@@ -2,8 +2,8 @@
 
 <img src="media/icon.png" alt="Hibernate Query Tester Logo" width="120" align="right"/>
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://marketplace.visualstudio.com/items?itemName=RhuanHianc.query-tester)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/xai/query-tester/blob/main/LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://marketplace.visualstudio.com/manage/publishers/RhuanHiancextensionshibernate-query-tester)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Test and debug JPQL/HQL and SQL queries directly in VS Code, with full Hibernate support!
 
