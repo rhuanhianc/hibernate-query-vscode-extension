@@ -26,6 +26,9 @@ export async function activate(context: vscode.ExtensionContext) {
     // Show initialization notification
     const startingMessage = vscode.window.setStatusBarMessage('$(sync~spin) Starting Hibernate Query Tester Server...');
 
+    // Create a custom output channel
+    const outputChannel = vscode.window.createOutputChannel('Hibernate Query Tester Logs');
+
     // Start Java server
     try {
         javaProcess = spawn('java', ['-jar', serverPath]);
@@ -45,6 +48,7 @@ export async function activate(context: vscode.ExtensionContext) {
             javaProcess.stdout?.on('data', (data: { toString: () => string | string[]; }) => {
                 const output = data.toString();
                 console.log(`Server: ${output}`);
+                outputChannel.appendLine(`Server: ${output}`);
 
                 if (output.includes('Server started')) {
                     clearTimeout(timeout);
@@ -54,11 +58,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
             javaProcess.stderr?.on('data', (data: { toString: () => string | undefined; }) => {
                 console.error(`Server Error: ${data}`);
+                outputChannel.appendLine(`Server Error: ${data}`);
             });
 
             javaProcess.on('error', (err: { message: any; }) => {
                 clearTimeout(timeout);
                 console.error(`Error spawning Java process: ${err.message}`);
+                outputChannel.appendLine(`Error spawning Java process: ${err.message}`);
                 reject(err);
             });
 
@@ -307,6 +313,7 @@ export async function activate(context: vscode.ExtensionContext) {
     } catch (err: any) {
         startingMessage.dispose();
         console.error(`Failed to start extension: ${err.message}`);
+        outputChannel.appendLine(`Failed to start extension: ${err.message}`);
         vscode.window.showErrorMessage(`Hibernate Query Tester: Error starting - ${err.message}`);
     }
 }
