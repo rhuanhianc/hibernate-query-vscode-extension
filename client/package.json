@@ -93,10 +93,10 @@
                 "queryTester.hibernateVersion": {
                     "type": "string",
                     "enum": [
-                        "5.5.3",
-                        "6.0.0"
+                        "5.6.15",
+                        "6.4.4"
                     ],
-                    "default": "5.5.3",
+                    "default": "5.6.15",
                     "description": "Hibernate version to use"
                 },
                 "queryTester.dbConfig": {

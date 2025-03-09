@@ -246,19 +246,19 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         try {
             // 1. Pre-processing: remove only external quotes, not within the query
             let cleanQuery = query.trim();
-            
+
             // Check if the entire query is in quotes and remove them only in this case
             const firstChar = cleanQuery.charAt(0);
             const lastChar = cleanQuery.charAt(cleanQuery.length - 1);
-            
+
             if ((firstChar === '"' || firstChar === "'") && firstChar === lastChar) {
                 // Only remove quotes if the entire query is in quotes
                 cleanQuery = cleanQuery.substring(1, cleanQuery.length - 1);
             }
-            
+
             // Remove concatenation operators and quotes between them
             cleanQuery = cleanQuery.replace(/["']\s*\+\s*["']/g, ' ');
-            
+
             // 2. List of SQL keywords for formatting
             const mainKeywords = [
                 'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET',
@@ -266,46 +266,46 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 'UPDATE', 'SET', 'DELETE FROM', 'CREATE TABLE', 'ALTER TABLE', 'DROP TABLE',
                 'WITH', 'WINDOW'
             ];
-            
+
             const joinKeywords = [
-                'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'LEFT OUTER JOIN', 
+                'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'LEFT OUTER JOIN',
                 'RIGHT OUTER JOIN', 'FULL OUTER JOIN', 'CROSS JOIN', 'NATURAL JOIN'
             ];
-            
+
             const conditionalKeywords = [
                 'AND', 'OR', 'XOR', 'NOT'
             ];
-            
+
             // 3. Apply basic formatting - ensure we have adequate spaces
             let formattedQuery = cleanQuery;
-            
+
             // Split the query into tokens to work with its structure
             // Convert everything to uppercase to facilitate recognition
             mainKeywords.forEach(keyword => {
                 const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`, 'gi');
                 formattedQuery = formattedQuery.replace(regex, `\n${keyword.toUpperCase()}`);
             });
-            
+
             joinKeywords.forEach(keyword => {
                 const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`, 'gi');
                 formattedQuery = formattedQuery.replace(regex, `\n  ${keyword.toUpperCase()}`);
             });
-            
+
             conditionalKeywords.forEach(keyword => {
                 const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`, 'gi');
                 formattedQuery = formattedQuery.replace(regex, `\n    ${keyword.toUpperCase()}`);
             });
-            
+
             // Handle ON clauses
             formattedQuery = formattedQuery.replace(/\bON\b/gi, '\n      ON');
-            
+
             // Add line breaks after commas in selection lists
             formattedQuery = formattedQuery.replace(/,\s*/g, ',\n      ');
-            
+
             // 4. Process the query line by line to apply indentation
             const lines = formattedQuery.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             const indentedLines: any[] = [];
-            
+
             lines.forEach(line => {
                 if (line.match(/^(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING|UNION|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH)/i)) {
                     // Main keyword - no indentation
@@ -326,30 +326,30 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     // Try to determine indentation based on context
                     const lastLine = indentedLines.length > 0 ? indentedLines[indentedLines.length - 1] : '';
                     const lastLineIndent = lastLine.length - lastLine.trimStart().length;
-                    
+
                     // By default, use the same indentation as the previous line
                     indentedLines.push(' '.repeat(lastLineIndent) + line);
                 }
             });
-            
+
             // 5. Normalize keywords to uppercase for better readability
-            const allKeywords = [...mainKeywords, ...joinKeywords, ...conditionalKeywords, 
-                               'AS', 'ON', 'USING', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
-                               'ASC', 'DESC', 'DISTINCT', 'ALL'];
-            
+            const allKeywords = [...mainKeywords, ...joinKeywords, ...conditionalKeywords,
+                'AS', 'ON', 'USING', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
+                'ASC', 'DESC', 'DISTINCT', 'ALL'];
+
             let finalQuery = indentedLines.join('\n');
             allKeywords.forEach(keyword => {
                 const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`, 'gi');
                 finalQuery = finalQuery.replace(regex, keyword.toUpperCase());
             });
-            
+
             // 6. Improve specific formatting of CASE clauses
             finalQuery = finalQuery.replace(/\bCASE\b/gi, '\n  CASE');
             finalQuery = finalQuery.replace(/\bWHEN\b/gi, '\n    WHEN');
             finalQuery = finalQuery.replace(/\bTHEN\b/gi, ' THEN');
             finalQuery = finalQuery.replace(/\bELSE\b/gi, '\n    ELSE');
             finalQuery = finalQuery.replace(/\bEND\b/gi, '\n  END');
-            
+
             // Return the formatted query
             this.postMessage({ command: 'formattedQuery', query: finalQuery });
         } catch (e) {
@@ -946,17 +946,17 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 }
 
                 .notification.success {
-                    background-color: rgba(35, 134, 54, 0.2);
+                    background-color: rgba(35, 134, 54, 0.8);
                     border-left: 3px solid var(--success-color);
                 }
 
                 .notification.error {
-                    background-color: rgba(176, 21, 21, 0.2);
+                    background-color: rgba(176, 21, 21, 0.8);
                     border-left: 3px solid var(--error-color);
                 }
 
                 .notification.info {
-                    background-color: rgba(14, 99, 156, 0.2);
+                    background-color: rgba(14, 99, 156, 0.8);
                     border-left: 3px solid var(--accent-color);
                 }
 
@@ -1357,11 +1357,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                         <div class="form-group">
                             <label for="hibernate-version">Hibernate Version</label>
                             <select id="hibernate-version">
-                                <option value="5.5.3">5.5.3</option>
-                                <option value="6.0.0">6.0.0</option>
+                                <option value="5.6.15">5.6.15</option>
+                                <option value="6.4.4">6.4.4</option>
                             </select>
                         </div>
-                        
+
                         <div class="form-group">
                             <div class="toolbar">
                                 <label>Entity Packages</label>
@@ -2189,7 +2189,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                             config
                         });
                     });
-
+                    // Event listener for the Hibernate version select
+                      document.getElementById('hibernate-version').addEventListener('change', function(event) {
+                            const newVersion = event.target.value;
+                            showNotification('For Hibernate version changes to take effect, please save and restart the VS Code!', 'info', 10000);
+                    });
                     function updateConfigurationUI(config) {
                         if (!config) return;
                         
@@ -2204,9 +2208,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                         document.getElementById('server-port').value = config.serverPort || 8089;
                         
                         document.getElementById('entity-lib-path').value = config.entityLibPath || '';
-                        document.getElementById('hibernate-version').value = config.hibernateVersion || '5.5.3';
+                        document.getElementById('hibernate-version').value = config.hibernateVersion || '5.6.15';
                         document.getElementById('project-scan-checkbox').checked = config.projectScan !== undefined ? config.projectScan : true;
                         
+
                         // Clear and update entity packages
                         document.getElementById('entity-packages-container').innerHTML = '';
                         if (config.entityPackages && Array.isArray(config.entityPackages)) {

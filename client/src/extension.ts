@@ -10,7 +10,12 @@ let sidebarProvider: SidebarProvider | null = null;
 export async function activate(context: vscode.ExtensionContext) {
     console.log('Activating Hibernate Query Tester Extension...');
 
-    const serverPath = path.join(context.extensionPath, 'server', 'query-tester-server-1.0-SNAPSHOT.jar');
+    const config = vscode.workspace.getConfiguration('queryTester');
+    const hibernateVersion = config.get<string>('hibernateVersion', '5'); // Default para 5
+    const jarName = hibernateVersion.startsWith('6')
+        ? 'query-tester-server-hibernate6-1.0-SNAPSHOT.jar'
+        : 'query-tester-server-hibernate5-1.0-SNAPSHOT.jar';
+    const serverPath = path.join(context.extensionPath, 'server', jarName);
 
     // Check if JAR file exists
     if (!fs.existsSync(serverPath)) {
