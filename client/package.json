@@ -1,0 +1,213 @@
+{
+    "name": "hibernate-query-tester",
+    "displayName": "Hibernate Query Tester",
+    "description": "Test JPQL/HQL and native SQL queries with Hibernate",
+    "version": "0.1.0",
+    "publisher": "RhuanHianc",
+    "icon": "images/icon.png",
+    "engines": {
+        "vscode": "^1.70.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Debuggers",
+        "Other"
+    ],
+    "keywords": [
+        "jpql",
+        "hql",
+        "hibernate",
+        "sql",
+        "database",
+        "query",
+        "java",
+        "kotlin"
+    ],
+    "activationEvents": [
+        "onView:hibernate-query-tester-sidebar"
+    ],
+    "main": "out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "hibernate-query-tester.testQuery",
+                "title": "Hibernate Query Tester: Testar Query Selecionada",
+                "icon": "$(database)"
+            },
+            {
+                "command": "hibernate-query-tester.testQueryContext",
+                "title": "Testar Query com Hibernate Query Tester",
+                "icon": "$(database)"
+            },
+            {
+                "command": "hibernate-query-tester-sidebar.focus",
+                "title": "Hibernate Query Tester: Abrir Painel",
+                "icon": "$(database)"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "hibernate-query-tester.testQueryContext",
+                    "when": "editorTextFocus",
+                    "group": "navigation@1"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "command": "hibernate-query-tester-sidebar.focus",
+                    "when": "resourceExtname =~ /\\.(java|kt)$/",
+                    "group": "navigation"
+                }
+            ],
+            "editor/title": [
+                {
+                    "command": "hibernate-query-tester.testQuery",
+                    "when": "editorLangId == java || editorLangId == kotlin",
+                    "group": "navigation"
+                }
+            ]
+        },
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "hibernate-query-tester-sidebar",
+                    "title": "Hibernate Query Tester",
+                    "icon": "images/icon.png"
+                }
+            ]
+        },
+        "views": {
+            "hibernate-query-tester-sidebar": [
+                {
+                    "id": "hibernate-query-tester-sidebar",
+                    "name": "Hibernate Query Tester",
+                    "type": "webview",
+                    "icon": "images/icon.png"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "Hibernate Query Tester",
+            "properties": {
+                "queryTester.hibernateVersion": {
+                    "type": "string",
+                    "enum": [
+                        "5.5.3",
+                        "6.0.0"
+                    ],
+                    "default": "5.5.3",
+                    "description": "Hibernate version to use"
+                },
+                "queryTester.dbConfig": {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "URL database (ex.: jdbc:mysql://localhost:3306/db)"
+                        },
+                        "username": {
+                            "type": "string",
+                            "description": "User database"
+                        },
+                        "password": {
+                            "type": "string",
+                            "description": "Password database"
+                        },
+                        "driver": {
+                            "type": "string",
+                            "description": "Driver database (ex.: com.mysql.cj.jdbc.Driver)"
+                        }
+                    },
+                    "default": {},
+                    "description": "Database connection configuration"
+                },
+                "queryTester.entityLibPath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to the JAR library containing entities and persistence.xml"
+                },
+                "queryTester.entityPackages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "description": "Specific packages to scan for entities in the library"
+                },
+                "queryTester.projectScan": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Scans for entities in the current project if true"
+                },
+                "queryTester.autoFormat": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically format queries when loading them"
+                },
+                "queryTester.maxHistorySize": {
+                    "type": "number",
+                    "default": 50,
+                    "minimum": 10,
+                    "maximum": 200,
+                    "description": "Maximum number of queries to be stored in history"
+                },
+                "queryTester.defaultNative": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Set queries as native (SQL) by default when it's not possible to determine"
+                },
+                "queryTester.serverHost": {
+                    "type": "string",
+                    "default": "127.0.0.1",
+                    "description": "Java Hibernate Query Tester server host (default: 127.0.0.1)"
+                },
+                "queryTester.serverPort": {
+                    "type": "number",
+                    "default": 8089,
+                    "minimum": 1024,
+                    "maximum": 65535,
+                    "description": "Java Hibernate Query Tester server port (default: 8089)"
+                }
+            }
+        },
+        "keybindings": [
+            {
+                "command": "hibernate-query-tester.testQuery",
+                "key": "ctrl+shift+q",
+                "mac": "cmd+shift+q",
+                "when": "editorTextFocus"
+            }
+        ]
+    },
+    "dependencies": {
+        "hibernate-query-tester": "file:",
+        "vscode-languageclient": "^8.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.13.10",
+        "@types/vscode": "^1.70.0",
+        "typescript": "^5.3.3"
+    },
+    "scripts": {
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "lint": "eslint src --ext ts",
+        "package": "vsce package"
+    },
+    "author": {
+        "name": "Rhuan Hianc",
+        "email": "rhuanhianc@gmail.com"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/rhuanhianc/hibernate-query-vscode-extension"
+    },
+    "bugs": {
+        "url": "https://github.com/rhuanhianc/hibernate-query-vscode-extension/issues"
+    },
+    "changelog": {
+        "0.1.0": "Initial release"
+    }
+}

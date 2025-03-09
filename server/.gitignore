@@ -1,0 +1,43 @@
+# Arquivos e diretórios gerados pelo Maven
+/target/
+/.settings/
+/.classpath
+/.project
+
+# Arquivos e diretórios gerados pelo sistema operacional e IDEs
+*.class
+*.log
+*.bak
+*.swp
+*.back
+*.cache
+*.aux
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+
+# Diretórios específicos do Eclipse
+/bin/
+.metadata/
+
+# Diretórios específicos do IntelliJ IDEA
+/.idea/
+/out/
+*.iml
+*.ipr
+*.iws
+
+# Diretórios específicos do NetBeans
+/nbproject/private/
+/build/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# Arquivos e diretórios gerados por outras ferramentas
+/cobertura.ser
+/derby.log
+/.checkstyle
+/dependency-reduced-pom.xml
