@@ -2,7 +2,7 @@
     "name": "hibernate-query-tester",
     "displayName": "Hibernate Query Tester",
     "description": "Test JPQL/HQL and native SQL queries with Hibernate",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "publisher": "RhuanHianc",
     "icon": "images/icon.png",
     "engines": {
