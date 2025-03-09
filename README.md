@@ -1,6 +1,6 @@
 # Hibernate Query Tester for VS Code
 
-<img src="media/icon.png" alt="Hibernate Query Tester Logo" width="120" align="right"/>
+<img src="https://github.com/rhuanhianc/hibernate-query-vscode-extension/blob/main/client/images/icon.png" alt="Hibernate Query Tester Logo" width="120" align="right"/>
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://marketplace.visualstudio.com/manage/publishers/RhuanHiancextensionshibernate-query-tester)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
