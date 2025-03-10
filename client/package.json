@@ -168,6 +168,18 @@
                     "minimum": 1024,
                     "maximum": 65535,
                     "description": "Java Hibernate Query Tester server port (default: 8089)"
+                },
+                "queryTester.logLevel": {
+                    "type": "string",
+                    "enum": [
+                        "TRACE",
+                        "DEBUG",
+                        "INFO",
+                        "WARN",
+                        "ERROR"
+                    ],
+                    "default": "INFO",
+                    "description": "Log Level for Hibernate Query Tester (TRACE, DEBUG, INFO, WARN, ERROR)"
                 }
             }
         },
@@ -176,6 +188,12 @@
                 "command": "hibernate-query-tester.testQuery",
                 "key": "ctrl+shift+q",
                 "mac": "cmd+shift+q",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "hibernate-query-tester.showLogs",
+                "key": "ctrl+shift+l",
+                "mac": "cmd+shift+l",
                 "when": "editorTextFocus"
             }
         ]

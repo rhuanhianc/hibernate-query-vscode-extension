@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { QueryClient } from './queryClient';
 import { Storage } from './storage';
+import { log } from 'console';
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
     private _webview?: vscode.Webview;
@@ -469,8 +470,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             });
 
             // Notify the user that it may be necessary to restart the extension
-            const message = config.serverHost !== this.queryClient.getServerHost() ||
-                config.serverPort !== this.queryClient.getServerPort()
+            const serverPortUpdated = config.serverPort !== this.queryClient.getServerPort();
+            const serverHostUpdated = config.serverHost !== this.queryClient.getServerHost();
+            const hibernateVersionUpdated = config.hibernateVersion !== this.queryClient.getHibernateVersion();
+            const message = serverPortUpdated || serverHostUpdated || hibernateVersionUpdated
                 ? 'Configuration saved successfully. It is necessary to restart the extension to apply server changes.'
                 : 'Configuration saved successfully.';
 
@@ -480,9 +483,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 message: message
             });
 
-            // If the server port or host has changed, offer to reload the window
+
+            // If the server port or host has changed or the Hibernate version has changed, prompt the user to restart
             if (config.serverHost !== this.queryClient.getServerHost ||
-                config.serverPort !== this.queryClient.getServerPort) {
+                config.serverPort !== this.queryClient.getServerPort
+                || config.hibernateVersion !== this.queryClient.getHibernateVersion()) {
 
                 vscode.window.showInformationMessage(
                     'Server settings have changed. Do you want to restart VS Code now?',
@@ -510,6 +515,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 dbConfig: config.get('dbConfig'),
                 serverHost: config.get('serverHost'),
                 serverPort: config.get('serverPort'),
+                logLevel: config.get('logLevel'),
                 entityLibPath: config.get('entityLibPath'),
                 entityPackages: config.get('entityPackages'),
                 projectScan: config.get('projectScan'),
@@ -1346,6 +1352,15 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                             <label for="server-port">Server Port</label>
                             <input type="number" id="server-port" placeholder="8089" min="1024" max="65535">
                         </div>
+                         <div class="form-group">
+                            <label for="log-level">Log Level</label>
+                            <select id="log-level">
+                                <option value="TRACE">TRACE</option>
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARN">WARN</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
                     </div>
 
                     <div class="section">
@@ -2171,6 +2186,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                             },
                             serverHost: document.getElementById('server-host').value,
                             serverPort: parseInt(document.getElementById('server-port').value) || 8089,
+                            logLevel: document.getElementById('log-level').value,
                             entityLibPath: document.getElementById('entity-lib-path').value,
                             hibernateVersion: document.getElementById('hibernate-version').value,
                             projectScan: document.getElementById('project-scan-checkbox').checked
@@ -2206,6 +2222,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                         // Server settings
                         document.getElementById('server-host').value = config.serverHost || '127.0.0.1';
                         document.getElementById('server-port').value = config.serverPort || 8089;
+                        document.getElementById('log-level').value = config.logLevel || 'INFO';
                         
                         document.getElementById('entity-lib-path').value = config.entityLibPath || '';
                         document.getElementById('hibernate-version').value = config.hibernateVersion || '5.6.15';

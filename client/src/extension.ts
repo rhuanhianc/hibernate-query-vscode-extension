@@ -3,12 +3,21 @@ import { SidebarProvider } from './sidebar';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import { Logger } from './logger';
 
 let javaProcess: ChildProcess | null = null;
 let sidebarProvider: SidebarProvider | null = null;
+let logger: Logger;
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('Activating Hibernate Query Tester Extension...');
+    logger = Logger.getInstance();
+    logger.info('Enabling Hibernate Query Tester Extension...');
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hibernate-query-tester.showLogs', () => {
+            logger.show();
+        })
+    );
 
     const config = vscode.workspace.getConfiguration('queryTester');
     const hibernateVersion = config.get<string>('hibernateVersion', '5'); // Default para 5
@@ -19,16 +28,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Check if JAR file exists
     if (!fs.existsSync(serverPath)) {
-        vscode.window.showErrorMessage(`Server file not found: ${serverPath}`);
+        const errorMsg = `Server file not found: ${serverPath}`;
+        logger.error(errorMsg);
+        vscode.window.showErrorMessage(errorMsg);
         return;
     }
 
     // Show initialization notification
     const startingMessage = vscode.window.setStatusBarMessage('$(sync~spin) Starting Hibernate Query Tester Server...');
 
+    // Get server port from configuration
+    const serverPort = config.get<number>('serverPort') || 8089;
+
     // Start Java server
     try {
-        javaProcess = spawn('java', ['-jar', serverPath]);
+        javaProcess = spawn('java', ['-jar', serverPath, serverPort.toString()]);
 
         // Wait for server to start
         const serverReady = new Promise<void>((resolve, reject) => {
@@ -44,7 +58,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
             javaProcess.stdout?.on('data', (data: { toString: () => string | string[]; }) => {
                 const output = data.toString();
-                console.log(`Server: ${output}`);
+                if (Array.isArray(output)) {
+                    output.forEach(line => logger.parseServerLog(line));
+                } else {
+                    logger.parseServerLog(output);
+                }
 
                 if (output.includes('Server started')) {
                     clearTimeout(timeout);
@@ -53,12 +71,12 @@ export async function activate(context: vscode.ExtensionContext) {
             });
 
             javaProcess.stderr?.on('data', (data: { toString: () => string | undefined; }) => {
-                console.error(`Server Error: ${data}`);
+                logger.error(`Server Error: ${data}`);
             });
 
             javaProcess.on('error', (err: { message: any; }) => {
                 clearTimeout(timeout);
-                console.error(`Error spawning Java process: ${err.message}`);
+                logger.error(`Error spawning Java process: ${err.message}`);
                 reject(err);
             });
 
@@ -302,11 +320,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(statusBarItem);
 
-        console.log('Hibernate Query Tester Extension successfully activated');
+        logger.info('Hibernate Query Tester Extension successfully activated');
 
     } catch (err: any) {
         startingMessage.dispose();
-        console.error(`Failed to start extension: ${err.message}`);
+        logger.error(`Failed to start extension: ${err.message}`);
         vscode.window.showErrorMessage(`Hibernate Query Tester: Error starting - ${err.message}`);
     }
 }
@@ -314,6 +332,6 @@ export async function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
     if (javaProcess) {
         javaProcess.kill();
-        console.log('Hibernate Query Tester Server stopped');
+        logger.info('Hibernate Query Tester Server stopped');
     }
 }
