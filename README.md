@@ -2,7 +2,7 @@
 
 <img src="https://github.com/rhuanhianc/hibernate-query-vscode-extension/blob/main/client/images/icon.png" alt="Hibernate Query Tester Logo" width="120" align="right"/>
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://marketplace.visualstudio.com/manage/publishers/RhuanHiancextensionshibernate-query-tester)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://marketplace.visualstudio.com/manage/publishers/RhuanHiancextensionshibernate-query-tester)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Test and debug JPQL/HQL and SQL queries directly in VS Code, with full Hibernate support!
@@ -22,6 +22,7 @@ Test and debug JPQL/HQL and SQL queries directly in VS Code, with full Hibernate
 - 🔎 **Automatic scanner** to find queries in your code
 - 🔧 **Support for Hibernate 5 and 6**
 - 📦 **Parameter sets** reusable across different queries
+- 📜 **Log Level Configuration** to control the verbosity of the logs
 
 ## 🔧 Installation
 
@@ -97,14 +98,12 @@ The extension consists of two main components:
 ### 1. Client (VS Code Extension)
 
 The client is implemented in TypeScript and is responsible for:
-
 - Displaying the graphical interface in VS Code
 - Managing query history and favorites
 - Sending queries to the Java server
 - Presenting results in a user-friendly manner
 
 Main modules:
-
 - `extension.ts`: Initializes the extension and manages the lifecycle
 - `sidebar.ts`: Implements the sidebar panel user interface
 - `queryClient.ts`: Manages communication with the Java server
@@ -113,13 +112,11 @@ Main modules:
 ### 2. Server (Java Application)
 
 The server is implemented in Java and executes queries in Hibernate:
-
 - Starts automatically when the extension is activated
 - Dynamically configures Hibernate based on settings
 - Executes queries and returns formatted results
 
 Main classes:
-
 - `Server.java`: Manages connections and routes requests
 - `QueryExecutor.java`: Executes JPQL and native SQL queries
 - `HibernateManager.java`: Configures the Hibernate session factory
@@ -141,7 +138,6 @@ Main classes:
 ### Query Editor
 
 The query editor provides:
-
 - Syntax highlighting for JPQL/HQL
 - Formatting button to improve readability
 - Option to toggle between JPQL/HQL and native SQL queries
@@ -149,7 +145,6 @@ The query editor provides:
 ### Parameter Management
 
 The extension offers:
-
 - Automatic detection of named and positional parameters (:name, ?1)
 - Parameter editor with validation
 - Saving parameter sets for reuse
@@ -157,7 +152,6 @@ The extension offers:
 ### Results Visualization
 
 Results are presented in:
-
 - Interactive table format
 - With details about execution time and number of records
 - Option to copy results as JSON
@@ -165,7 +159,6 @@ Results are presented in:
 ### History and Favorites
 
 Allows:
-
 - Access to previously executed queries
 - Save favorite queries with custom names
 - Organize queries by frequent use
@@ -219,6 +212,22 @@ WHERE p.price BETWEEN :minPrice AND :maxPrice
 
 ## Release Notes
 
+### 0.2.0
+
+- Added support for Persistence.xml path
+- Improved entity scanning
+- Add support for port dynamic in start server
+- Imporved error handling
+- Fixed minor bugs
+
+### 0.1.5
+
+- Added log level configuration
+- Improved error handling
+- Fixed minor bugs
+
+### 0.1.0
+
 - Initial release of Hibernate Query Tester.
 
 ## 📣 Feedback and Contributions
@@ -239,3 +248,15 @@ This extension is licensed under the [MIT License](LICENSE).
 - [Rhuan Hianc](https://github.com/rhuanhianc)
 
 **Note:** This is a study project and is currently under development. Feedback and contributions are welcome!
+
+## Telemetry Temporary
+
+This extension collects anonymous usage data to help improve the product. We only collect:
+
+- Extension installs
+- Extension activations
+- Errors during execution
+
+We do not collect any query content, database settings, or personal information.
+
+You can disable telemetry in the extension settings or in VS Code.

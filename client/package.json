@@ -2,7 +2,7 @@
     "name": "hibernate-query-tester",
     "displayName": "Hibernate Query Tester",
     "description": "Test JPQL/HQL and native SQL queries with Hibernate",
-    "version": "0.1.5",
+    "version": "0.2.0",
     "publisher": "RhuanHianc",
     "icon": "images/icon.png",
     "engines": {
@@ -211,9 +211,16 @@
     "devDependencies": {
         "@types/node": "^22.13.10",
         "@types/vscode": "^1.70.0",
-        "typescript": "^5.3.3"
+        "ts-loader": "^9.5.2",
+        "typescript": "^5.3.3",
+        "webpack": "^5.98.0",
+        "webpack-cli": "^6.0.1"
     },
     "scripts": {
+        "vscode:prepublish": "npm run webpack-prod",
+        "webpack": "webpack --mode development",
+        "webpack-dev": "webpack --mode development --watch",
+        "webpack-prod": "webpack --mode production",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "lint": "eslint src --ext ts",
@@ -232,6 +239,7 @@
         "url": "https://github.com/rhuanhianc/hibernate-query-vscode-extension/issues"
     },
     "changelog": {
+        "0.2.0": "Added support for Persistence.xml, improved entity scanning and add support for port dynamic",
         "0.1.5": "Added log level configuration and fixed some bugs",
         "0.1.0": "Initial release"
     }
