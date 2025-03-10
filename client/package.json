@@ -31,17 +31,17 @@
         "commands": [
             {
                 "command": "hibernate-query-tester.testQuery",
-                "title": "Hibernate Query Tester: Testar Query Selecionada",
+                "title": "Hibernate Query Tester: Test Selected Query",
                 "icon": "$(database)"
             },
             {
                 "command": "hibernate-query-tester.testQueryContext",
-                "title": "Testar Query com Hibernate Query Tester",
+                "title": "Test Query with Hibernate Query Tester",
                 "icon": "$(database)"
             },
             {
                 "command": "hibernate-query-tester-sidebar.focus",
-                "title": "Hibernate Query Tester: Abrir Painel",
+                "title": "Hibernate Query Tester: Open Panel",
                 "icon": "$(database)"
             }
         ],
