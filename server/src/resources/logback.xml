@@ -4,7 +4,12 @@
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
-    <root level="INFO">
+    
+    <logger name="org.hibernate.SQL" level="DEBUG" />
+    <logger name="com.querytester" level="INFO" />
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE" /> 
+    
+    <root level="WARN">
         <appender-ref ref="CONSOLE" />
     </root>
 </configuration>
