@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{styleUri}} 'unsafe-inline'; script-src 'nonce-{{cspNonce}}';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hibernate Query Tester</title>
+    <link rel="stylesheet" href="{{styleUri}}">
+</head>
+<body>
+    <div class="container">
+        <div id="notifications-container"></div>
+        
+        <!-- Modals -->
+        <div id="save-favorite-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Save Query as Favorite</h3>
+                    <span class="close-btn" id="close-favorite-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="favorite-name">Favorite Query Name</label>
+                        <input type="text" id="favorite-name" placeholder="Ex: Customer Query">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel-save-favorite" class="secondary">Cancel</button>
+                    <button id="confirm-save-favorite">Save</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="save-param-set-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Save Parameter Set</h3>
+                    <span class="close-btn" id="close-param-set-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="param-set-name">Set Name</label>
+                        <input type="text" id="param-set-name" placeholder="Ex: Default Filters">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel-save-param-set" class="secondary">Cancel</button>
+                    <button id="confirm-save-param-set">Save</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="load-param-set-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Load Parameter Set</h3>
+                    <span class="close-btn" id="close-load-param-set-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="param-sets-selector" class="list-container" style="max-height: 200px;">
+                        <!-- List of parameter sets -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel-load-param-set" class="secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="query">Query</button>
+            <button class="tab" data-tab="history">History</button>
+            <button class="tab" data-tab="favorites">Favorites</button>
+            <button class="tab" data-tab="param-sets">Parameter Sets</button>
+            <button class="tab" data-tab="config">Settings</button>
+        </div>
+        
+        <div id="query-tab" class="tab-content active">
+            <!-- Query lists area (scanned and favorites) -->
+            <div class="query-lists">
+                <div class="query-lists-tabs">
+                    <button class="query-lists-tab active" data-list="scanned">Queries</button>
+                </div>
+                <div id="scanned-queries-list" class="query-lists-content active">
+                    <!-- Scanned queries will be added here -->
+                    <div class="scanned-query">No scanned queries. Use the "Scan Queries" button.</div>
+                </div>
+                <div id="favorite-queries-list" class="query-lists-content">
+                    <!-- Favorite queries will be added here -->
+                    <div class="favorite-query">No favorite queries. Save queries by clicking "Save as Favorite".</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="toolbar">
+                    <h3>HQL/JPQL Query</h3>
+                    <div>
+                        <button id="format-btn" class="small secondary" title="Format Query">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 10H3"></path>
+                                <path d="M21 6H3"></path>
+                                <path d="M21 14H3"></path>
+                                <path d="M21 18H3"></path>
+                            </svg>
+                            Format
+                        </button>
+                        <button id="clear-query-btn" class="small secondary" title="Clear Editor">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                            </svg>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="query-editor">
+                    <textarea id="query-input" placeholder="Type your HQL/JPQL query here or select in the editor and click 'Test Selected Query'"></textarea>
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" id="is-native-checkbox">
+                    <label for="is-native-checkbox">Native Query (SQL)</label>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="toolbar">
+                    <h3>Parameters</h3>
+                    <div>
+                        <button id="add-param-btn" class="small secondary">+ Add</button>
+                        <button id="load-param-set-btn" class="small secondary">Load Set</button>
+                        <button id="save-param-set-btn" class="small secondary">Save Set</button>
+                    </div>
+                </div>
+                <div id="params-container" class="params-container">
+                    <!-- Parameters will be added here -->
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="save-params-checkbox">
+                    <label for="save-params-checkbox">Save parameters for this query</label>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="execute-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Execute Query
+                </button>
+                <button id="scan-btn" class="secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    Scan Queries
+                </button>
+                <button id="save-favorite-btn" class="secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    Save as Favorite
+                </button>
+            </div>
+
+            <div class="query-results">
+                <div class="result-header">
+                    <span>Results</span>
+                    <div>
+                        <button id="copy-results-btn" class="small secondary" title="Copy Results">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy
+                        </button>
+                    </div>
+                </div>
+                <div id="result-body" class="result-body">
+                    <div id="result-placeholder">
+                        <p>Execute a query to see the results here.</p>
+                    </div>
+                    <div id="result-content" style="display: none;">
+                        <div id="result-info" class="result-info">
+                            <!-- Info about results -->
+                        </div>
+                        <div id="result-table-container">
+                            <!-- Results table -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="history-tab" class="tab-content">
+            <div class="toolbar">
+                <h3>Query History</h3>
+                <button id="clear-history-btn" class="small secondary">Clear History</button>
+            </div>
+            <div id="history-list" class="list-container">
+                <!-- History will be added here -->
+                <div class="list-item">No queries in history</div>
+            </div>
+        </div>
+        
+        <div id="favorites-tab" class="tab-content">
+            <div class="toolbar">
+                <h3>Favorite Queries</h3>
+            </div>
+            <div id="favorites-list" class="list-container">
+                <!-- Favorites will be added here -->
+                <div class="list-item">No favorite queries</div>
+            </div>
+        </div>
+        
+        <div id="param-sets-tab" class="tab-content">
+            <div class="toolbar">
+                <h3>Saved Parameter Sets</h3>
+            </div>
+            <div id="param-sets-list" class="list-container">
+                <!-- Parameter sets will be added here -->
+                <div class="list-item">No saved parameter sets</div>
+            </div>
+        </div>
+        
+        <div id="config-tab" class="tab-content">
+            <div class="section">
+                <h3>Database Settings</h3>
+                <div class="form-group">
+                    <label for="db-url">Database URL</label>
+                    <input type="text" id="db-url" placeholder="jdbc:postgresql://localhost:5432/database">
+                </div>
+                <div class="form-group">
+                    <label for="db-username">User</label>
+                    <input type="text" id="db-username">
+                </div>
+                <div class="form-group">
+                    <label for="db-password">Password</label>
+                    <input type="password" id="db-password">
+                </div>
+                <div class="form-group">
+                    <label for="db-driver">JDBC Driver</label>
+                    <input type="text" id="db-driver" placeholder="org.postgresql.Driver">
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Server Settings</h3>
+                <div class="form-group">
+                    <label for="server-host">Server Host</label>
+                    <input type="text" id="server-host" placeholder="127.0.0.1">
+                </div>
+                <div class="form-group">
+                    <label for="server-port">Server Port</label>
+                    <input type="number" id="server-port" placeholder="8089" min="1024" max="65535">
+                </div>
+                <div class="form-group">
+                    <label for="log-level">Log Level</label>
+                    <select id="log-level">
+                        <option value="TRACE">TRACE</option>
+                        <option value="DEBUG">DEBUG</option>
+                        <option value="INFO">INFO</option>
+                        <option value="WARN">WARN</option>
+                        <option value="ERROR">ERROR</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Hibernate Entities</h3>
+                <div class="form-group">
+                    <label for="entity-lib-path">Path to JAR with Entities or Persistence.xml EX: /path/to/your.jar or /path/to/persistence.xml</label>
+                    <input type="text" id="entity-lib-path">
+                </div>
+                <div class="form-group">
+                    <label for="hibernate-version">Hibernate Version</label>
+                    <select id="hibernate-version">
+                        <option value="5.6.15">5.6.15</option>
+                        <option value="6.4.4">6.4.4</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <div class="toolbar">
+                        <label>Entity Packages</label>
+                        <button id="add-package-btn" class="small secondary">+ Add</button>
+                    </div>
+                    <div id="entity-packages-container" class="packages-list">
+                        <!-- Packages will be added here -->
+                    </div>
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" id="project-scan-checkbox">
+                    <label for="project-scan-checkbox">Scan entities in the current project</label>
+                </div>
+            </div>
+
+            <button id="save-config-btn">Save Settings</button>
+        </div>
+    </div>
+    
+    <script src="{{scriptUri}}"></script>
+</body>
+</html>

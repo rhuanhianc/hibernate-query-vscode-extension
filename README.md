@@ -212,6 +212,12 @@ WHERE p.price BETWEEN :minPrice AND :maxPrice
 
 ## Release Notes
 
+### 0.2.1
+
+- Fixed modal for saving queries
+- Improved loading queries with command or scan
+- Updated icon and package.json
+
 ### 0.2.0
 
 - Added support for Persistence.xml path

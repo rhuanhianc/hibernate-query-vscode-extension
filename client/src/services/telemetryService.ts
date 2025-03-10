@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import TelemetryReporter from '@vscode/extension-telemetry';
-import { config } from './config/config.real';
-import { Logger } from './logger';
+import { config } from '../config/config.real';
+import { Logger } from '../utils/logger';
 
 /**
  * Telemetry Service for Hibernate Query Tester

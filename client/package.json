@@ -2,7 +2,7 @@
     "name": "hibernate-query-tester",
     "displayName": "Hibernate Query Tester",
     "description": "Test JPQL/HQL and native SQL queries with Hibernate",
-    "version": "0.2.0",
+    "version": "0.2.2",
     "publisher": "RhuanHianc",
     "icon": "images/icon.png",
     "engines": {
@@ -239,6 +239,7 @@
         "url": "https://github.com/rhuanhianc/hibernate-query-vscode-extension/issues"
     },
     "changelog": {
+        "0.2.1": "Fixes modals for saving and improvements when loading queries with command or scan, updated icon and package.json",
         "0.2.0": "Added support for Persistence.xml, improved entity scanning and add support for port dynamic",
         "0.1.5": "Added log level configuration and fixed some bugs",
         "0.1.0": "Initial release"

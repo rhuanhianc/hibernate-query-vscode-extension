@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
-import { SidebarProvider } from './sidebar';
+import { SidebarProvider } from './sidebar/sidebarProvider';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as net from 'net';
-import { Logger } from './logger';
-import { TelemetryService } from './telemetry';
+import { Logger } from './utils/logger';
+import { TelemetryService } from './services/telemetryService';
 
 let javaProcess: ChildProcess | null = null;
 let sidebarProvider: SidebarProvider | null = null;
