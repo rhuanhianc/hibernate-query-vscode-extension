@@ -11,8 +11,8 @@ let javaProcess: ChildProcess | null = null;
 let sidebarProvider: SidebarProvider | null = null;
 let logger: Logger;
 let telemetryService: TelemetryService;
-let configuredPort: number; 
-let actualPort: number;     
+let configuredPort: number;
+let actualPort: number;
 
 /**
  * Checks if a port is available
@@ -22,7 +22,7 @@ let actualPort: number;
 async function isPortAvailable(port: number): Promise<boolean> {
     return new Promise((resolve) => {
         const server = net.createServer();
-        
+
         server.once('error', (err: NodeJS.ErrnoException) => {
             // If the port is in use, return false
             if (err.code === 'EADDRINUSE') {
@@ -33,14 +33,14 @@ async function isPortAvailable(port: number): Promise<boolean> {
                 resolve(false);
             }
         });
-        
+
         server.once('listening', () => {
             // The port is available, close the server and return true
             server.close(() => {
                 resolve(true);
             });
         });
-        
+
         // Try to open the port
         server.listen(port, '127.0.0.1');
     });
@@ -55,17 +55,17 @@ async function isPortAvailable(port: number): Promise<boolean> {
 async function findAvailablePort(startPort: number, maxTries: number = 50): Promise<number> {
     let currentPort = startPort;
     let tries = 0;
-    
+
     while (tries < maxTries) {
         if (await isPortAvailable(currentPort)) {
             return currentPort;
         }
-        
+
         logger.info(`Port ${currentPort} is in use, trying next port...`);
         currentPort++;
         tries++;
     }
-    
+
     throw new Error(`Could not find an available port after ${maxTries} attempts.`);
 }
 
@@ -104,17 +104,17 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Get server port from configuration
     configuredPort = config.get<number>('serverPort') || 8089;
-    
+
     // Start Java server
     try {
         // Find an available port starting from the configured port
         actualPort = await findAvailablePort(configuredPort);
-        
+
         if (actualPort !== configuredPort) {
             logger.info(`Configured port ${configuredPort} is in use. Using alternative port ${actualPort}.`);
             vscode.window.showInformationMessage(`The configured port ${configuredPort} is in use. Using alternative port ${actualPort} for this session.`);
         }
-        
+
         // Start the Java process with the available port
         javaProcess = spawn('java', ['-jar', serverPath, actualPort.toString()]);
 
@@ -168,11 +168,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
         await serverReady;
         startingMessage.dispose();
-        
-        const portMessage = actualPort === configuredPort 
+
+        const portMessage = actualPort === configuredPort
             ? `$(check) Hibernate Query Tester Server started on port ${actualPort}`
             : `$(check) Hibernate Query Tester Server started on alternate port ${actualPort}`;
-            
+
         vscode.window.setStatusBarMessage(portMessage, 5000);
 
         // Initialize sidebar provider
@@ -185,162 +185,358 @@ export async function activate(context: vscode.ExtensionContext) {
                 sidebarProvider
             )
         );
-        
-        // Improved function to extract queries
+
         const extractQuery = (text: string): { query: string, isNative: boolean } => {
-            // Helper function to extract complete query content
-            const extractCompleteQuery = (text: string): string => {
-                // Remove comments to avoid false positives
-                const textWithoutComments = text.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+            // If text is already a direct SQL/JPQL query
+            if (text.trim().toUpperCase().match(/^(SELECT|UPDATE|DELETE|INSERT|WITH|FROM)/)) {
+                return {
+                    query: text.trim(),
+                    isNative: determineIfNative(text.trim())
+                };
+            }
 
-                // Detect if the text is already a direct SQL/JPQL query
-                if (textWithoutComments.trim().toUpperCase().match(/^(SELECT|UPDATE|DELETE|INSERT|WITH)/)) {
-                    return textWithoutComments.trim();
-                }
+            // Remove comments to avoid false positives
+            const codeWithoutComments = text
+                .replace(/\/\/.*$/gm, '')
+                .replace(/\/\*[\s\S]*?\*\//g, '');
 
-                // Patterns to identify the beginning of a query declaration
-                const queryStartPatterns = [
-                    /String\s+(?:sql\w*|jpql|hql|consulta\w*)\s*=\s*["']/,
-                    /(?:entityManager|em|session)\.create(?:Native)?Query\s*\(\s*["']/,
-                    /@(?:Named)?Query\s*\(\s*(?:nativeQuery\s*=\s*(?:true|false)\s*,\s*)?(?:value\s*=\s*)?["']/
-                ];
+            // Try multiple extraction methods in sequence for robustness
 
-                // Check if any start patterns are present
-                let queryStartMatch = null;
-                for (const pattern of queryStartPatterns) {
-                    const match = textWithoutComments.match(pattern);
-                    if (match) {
-                        queryStartMatch = match;
-                        break;
-                    }
-                }
+            // Method 1: Simple regex-based extraction
+            const simpleExtraction = simpleExtractor(codeWithoutComments);
+            if (simpleExtraction.success) {
+                return {
+                    query: simpleExtraction.query,
+                    isNative: simpleExtraction.isNative
+                };
+            }
 
-                if (queryStartMatch) {
-                    // Extract only the content between quotes
-                    const stringPattern = /["']([^"']+)["']/g;
-                    let stringMatch;
-                    let fullQuery = '';
+            // Method 2: Pattern-based extraction for specific cases
+            const patternExtraction = patternExtractor(codeWithoutComments);
+            if (patternExtraction.success) {
+                return {
+                    query: patternExtraction.query,
+                    isNative: patternExtraction.isNative
+                };
+            }
 
-                    while ((stringMatch = stringPattern.exec(textWithoutComments)) !== null) {
-                        if (stringMatch[1]) {
-                            fullQuery += stringMatch[1];
-                        }
-                    }
+            // Method 3: General-purpose extraction with state tracking
+            const stateExtraction = stateBasedExtractor(codeWithoutComments);
+            if (stateExtraction.success) {
+                return {
+                    query: stateExtraction.query,
+                    isNative: stateExtraction.isNative
+                };
+            }
 
-                    return fullQuery.trim();
-                }
-
-                // If nothing is found, return the original text
-                return textWithoutComments.trim();
-            };
-
-            // Extract the complete query text
-            const queryText = extractCompleteQuery(text);
-
-            // Determine if it's native SQL or JPQL
-            const isNative = determineIfNative(queryText);
-
+            // Fallback: If no extraction method worked, return the original text
             return {
-                query: queryText,
-                isNative: isNative
+                query: text.trim(),
+                isNative: determineIfNative(text.trim())
             };
         };
 
-        // Helper function to determine if a query is native SQL or JPQL
+        /**
+         * Simple regex-based extractor for common query patterns
+         */
+        function simpleExtractor(text: string): {
+            success: boolean,
+            query: string,
+            isNative: boolean
+        } {
+            // For native queries with simple structure
+            if (text.includes(".createNativeQuery")) {
+                const nativeQueryRegex = /\.createNativeQuery\s*\(\s*"([^"]+)"/;
+                const match = text.match(nativeQueryRegex);
+
+                if (match) {
+                    return {
+                        success: true,
+                        query: match[1],
+                        isNative: true
+                    };
+                }
+
+                // Try with concatenated strings
+                const concatRegex = /\.createNativeQuery\s*\(\s*((?:"[^"]*"(?:\s*\+\s*"[^"]*")*)|(?:'[^']*'(?:\s*\+\s*'[^']*')*))/;
+                const concatMatch = text.match(concatRegex);
+
+                if (concatMatch) {
+                    // Process concatenated strings
+                    const rawQueryString = concatMatch[1];
+                    const extractedQuery = rawQueryString
+                        .replace(/"\s*\+\s*"/g, '') // Remove concatenation
+                        .replace(/^"|"$/g, '');     // Remove outer quotes
+
+                    return {
+                        success: true,
+                        query: extractedQuery,
+                        isNative: true
+                    };
+                }
+            }
+
+            // For JPQL queries
+            if (text.includes(".createQuery")) {
+                const jpqlQueryRegex = /\.createQuery\s*\(\s*"([^"]+)"/;
+                const match = text.match(jpqlQueryRegex);
+
+                if (match) {
+                    return {
+                        success: true,
+                        query: match[1],
+                        isNative: false
+                    };
+                }
+
+                // Try with concatenated strings
+                const concatRegex = /\.createQuery\s*\(\s*((?:"[^"]*"(?:\s*\+\s*"[^"]*")*)|(?:'[^']*'(?:\s*\+\s*'[^']*')*))/;
+                const concatMatch = text.match(concatRegex);
+
+                if (concatMatch) {
+                    // Process concatenated strings
+                    const rawQueryString = concatMatch[1];
+                    const extractedQuery = rawQueryString
+                        .replace(/"\s*\+\s*"/g, '') // Remove concatenation
+                        .replace(/^"|"$/g, '');     // Remove outer quotes
+
+                    return {
+                        success: true,
+                        query: extractedQuery,
+                        isNative: false
+                    };
+                }
+            }
+
+            return {
+                success: false,
+                query: '',
+                isNative: false
+            };
+        }
+
+        /**
+         * Pattern-based extractor for specific query patterns
+         */
+        function patternExtractor(text: string): {
+            success: boolean,
+            query: string,
+            isNative: boolean
+        } {
+            // Handle the common case with date format patterns
+            if ((text.includes("'YYYY'") || text.includes("'yyyy'")) &&
+                (text.includes("to_char") || text.includes("TO_CHAR"))) {
+
+                // Native SQL with to_char and date format
+                let match;
+
+                // More specific pattern for to_char with 'YYYY'
+                const toCharPattern = /select\s+[^;]+to_char\([^,]+,\s*'[^']*(?:YYYY|yyyy)[^']*'\)[^;]*;/i;
+                match = text.match(toCharPattern);
+
+                if (match) {
+                    return {
+                        success: true,
+                        query: match[0],
+                        isNative: true
+                    };
+                }
+            }
+
+            // JPQL pattern with entity names in PascalCase
+            const jpqlPattern = /FROM\s+[A-Z][a-zA-Z0-9]*\s+[a-z]\s+WHERE\s+[a-z]\.[a-zA-Z0-9.]+\s*=\s*:[a-zA-Z0-9_]+/i;
+            const jpqlMatch = text.match(jpqlPattern);
+
+            if (jpqlMatch) {
+                return {
+                    success: true,
+                    query: jpqlMatch[0],
+                    isNative: false
+                };
+            }
+
+            return {
+                success: false,
+                query: '',
+                isNative: false
+            };
+        }
+
+        /**
+         * State-based extractor that handles complex cases
+         */
+        function stateBasedExtractor(text: string): {
+            success: boolean,
+            query: string,
+            isNative: boolean
+        } {
+            let isNative = false;
+            let startIndex = -1;
+
+            // Find the query creation call
+            if (text.includes(".createNativeQuery")) {
+                startIndex = text.indexOf(".createNativeQuery");
+                isNative = true;
+            } else if (text.includes(".createQuery")) {
+                startIndex = text.indexOf(".createQuery");
+                isNative = false;
+            } else {
+                return {
+                    success: false,
+                    query: '',
+                    isNative: false
+                };
+            }
+
+            // Find opening parenthesis
+            const openParenIndex = text.indexOf("(", startIndex);
+            if (openParenIndex === -1) {
+                return {
+                    success: false,
+                    query: '',
+                    isNative: isNative
+                };
+            }
+
+            // Determine quote character used (single or double)
+            let quoteChar = '';
+            let firstQuoteIndex = -1;
+
+            const singleQuoteIndex = text.indexOf("'", openParenIndex);
+            const doubleQuoteIndex = text.indexOf('"', openParenIndex);
+
+            if (singleQuoteIndex !== -1 && (doubleQuoteIndex === -1 || singleQuoteIndex < doubleQuoteIndex)) {
+                quoteChar = "'";
+                firstQuoteIndex = singleQuoteIndex;
+            } else if (doubleQuoteIndex !== -1) {
+                quoteChar = '"';
+                firstQuoteIndex = doubleQuoteIndex;
+            } else {
+                return {
+                    success: false,
+                    query: '',
+                    isNative: isNative
+                };
+            }
+
+            // Extract query content with state tracking
+            let queryContent = "";
+            let i = firstQuoteIndex + 1;
+            let insideQuery = true;
+
+            while (i < text.length && insideQuery) {
+                // Check for end quote that's not escaped
+                if (text[i] === quoteChar && text[i - 1] !== '\\') {
+                    // Check if this is followed by concatenation
+                    const nextNonSpace = text.substring(i + 1).trim();
+                    if (nextNonSpace.startsWith("+")) {
+                        // Skip to the next quote
+                        const nextQuoteIndex = text.indexOf(quoteChar, i + 1);
+                        if (nextQuoteIndex !== -1) {
+                            i = nextQuoteIndex + 1;
+                            continue;
+                        }
+                    }
+                    insideQuery = false;
+                    break;
+                }
+
+                queryContent += text[i];
+                i++;
+            }
+
+            if (queryContent) {
+                // Post-process the query content
+                // Fix date format patterns if this is a native query
+                if (isNative) {
+                    // Handle to_char with date format
+                    queryContent = queryContent.replace(/to_char\s*\([^,]+,\s*'([^']+)(?!')/gi,
+                        (match, format) => `to_char(${match.substring(8, match.indexOf(','))}, '${format}'`);
+
+                    // Fix unclosed quotes in date patterns
+                    if (queryContent.includes("'YYYY") && !queryContent.includes("'YYYY'")) {
+                        queryContent = queryContent.replace(/'YYYY(?!\s*')/g, "'YYYY'");
+                    }
+                }
+
+                return {
+                    success: true,
+                    query: queryContent,
+                    isNative: isNative
+                };
+            }
+
+            return {
+                success: false,
+                query: '',
+                isNative: isNative
+            };
+        }
+
+        /**
+         * Helper function to determine if a query is native SQL or JPQL
+         * Uses a scoring system based on characteristic patterns
+         * 
+         * @param query - The query text to analyze
+         * @returns boolean - True if the query is likely native SQL, false if likely JPQL
+         */
         function determineIfNative(query: string): boolean {
-            // JPQL indicators (not native)
+            // JPQL indicators
             const jpqlIndicators = [
-                // JPQL syntax characteristics
                 /JOIN\s+FETCH/i,                  // JOIN FETCH is specific to JPQL
-                /\bIN\s*\(\s*:[a-zA-Z0-9_]+\s*\)/i,  // Parameters in IN clauses: IN (:param)
-                /\bTYPE\s*\(/i,                   // TYPE() operator in JPQL
                 /\bMEMBER\s+OF\b/i,               // MEMBER OF is specific to JPQL
                 /\bIS\s+EMPTY\b/i,                // IS EMPTY is specific to JPQL
                 /\bNEW\s+[a-zA-Z0-9_.]+\s*\(/i,   // NEW constructor in JPQL
-                /\bINDEX\s*\(/i,                  // INDEX() is a JPQL function
-                /\bTREAT\s*\(/i,                  // TREAT() is a JPQL function
                 /\bENTRY\s*\(/i,                  // ENTRY() is a JPQL function
-                /\bCASE\s+WHEN\s+[^=]*\s+IS\s+NULL\b/i  // CASE WHEN x IS NULL in JPQL
+                /\bFROM\s+[A-Z][a-zA-Z0-9]*\b/i,  // Entity names in PascalCase
+                /\.[a-zA-Z][a-zA-Z0-9]*\b/i       // Property access with dot notation
             ];
 
-            // Characteristics suggesting native SQL
+            // Native SQL indicators
             const nativeSqlIndicators = [
-                // SQL specific syntax
                 /CREATE\s+(?:TEMP\s+)?TABLE/i,    // CREATE TABLE is native SQL
                 /ALTER\s+TABLE/i,                 // ALTER TABLE is native SQL
                 /DROP\s+TABLE/i,                  // DROP TABLE is native SQL
-                /EXEC\s+/i,                       // EXEC is native SQL
-                /EXECUTE\s+/i,                    // EXECUTE is native SQL
-                /\bSP_/i,                         // Stored procedures starting with SP_
-                /WITH\s+[a-zA-Z0-9_]+\s+AS\s+\(/i, // CTEs are more common in native SQL
-                /INSERT\s+INTO\s+[a-zA-Z0-9_.]+\s*\(/i, // INSERT INTO with specific columns
-                /MERGE\s+INTO/i,                  // MERGE INTO is native SQL
-                /SELECT\s+TOP\s+/i,               // SELECT TOP is native SQL (SQL Server)
+                /WITH\s+[a-zA-Z0-9_]+\s+AS\s+\(/i, // CTEs are common in native SQL
                 /\bROWNUM\b/i,                    // ROWNUM is Oracle SQL
                 /\bDUAL\b/i,                      // DUAL is Oracle SQL
-                /\b[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+\b/i, // Full schemas: schema.table.column
-                /\[\w+\]/                         // Identifiers in brackets [column] in SQL Server
+                /\b[a-z_]+\.[a-z_]+\.[a-z_]+\b/i, // Schema references
+                /\b[a-z_]+\.[a-z_]+\b/i,          // Table references with schema 
+                /to_char\s*\(/i,                  // Oracle to_char function
+                /\b[a-z_]+_[a-z_]+\b/i            // Snake case table/column names
             ];
 
-            // Specific database schema indicators and naming conventions
-            const schemaTablePatterns = [
-                /\bel_[a-z_]+\.[a-z_]+\b/i,       // Schema pattern observed in examples
-                /\bcop_[a-z_]+\b/i,               // Tables with cop_ prefix
-                /\bgg_[a-z_]+\b/i,                // Tables with gg_ prefix
-                /\bdic_[a-z_]+\b/i                // Tables with dic_ prefix
-            ];
-
-            // Check for presence of JPA entities (with PascalCase)
-            const entityJpaPattern = /\b[A-Z][a-zA-Z0-9]*\b(?!\s*\.)/g;
-            const entityMatches = query.match(entityJpaPattern) || [];
-            const hasJpaEntities = entityMatches.length > 0 &&
-                !query.includes('.') &&
-                !query.includes('_');
-
-            // Check for named parameters (strong JPQL characteristic)
-            const namedParamPattern = /:[a-zA-Z0-9_]+/g;
-            const hasNamedParams = (query.match(namedParamPattern) || []).length > 0;
-
-            // Count indicators
             let jpqlScore = 0;
             let nativeScore = 0;
 
             // Check JPQL indicators
             for (const pattern of jpqlIndicators) {
                 if (pattern.test(query)) {
-                    jpqlScore += 2;  // Higher weight for specific JPQL characteristics
+                    jpqlScore += 2;
                 }
             }
 
             // Check native SQL indicators
             for (const pattern of nativeSqlIndicators) {
                 if (pattern.test(query)) {
-                    nativeScore += 2;  // Higher weight for specific SQL characteristics
+                    nativeScore += 2;
                 }
             }
 
-            // Check schema/table patterns (strong native SQL indicator)
-            for (const pattern of schemaTablePatterns) {
-                if (pattern.test(query)) {
-                    nativeScore += 3;  // Even higher weight for schema/table patterns
-                }
-            }
-
-            // Adjust score based on JPA entities and named parameters
-            if (hasJpaEntities) {
-                jpqlScore += 3;  // Strong JPQL indicator
-            }
-
-            if (hasNamedParams) {
-                jpqlScore += 1;  // JPQL indicator (but can also occur in SQL)
-            }
-
-            // Check for underscores in names (native SQL indicator)
+            // Additional checks
+            // Check for underscores in names (SQL convention)
             if (query.includes('_')) {
                 nativeScore += 1;
             }
 
-            return nativeScore > jpqlScore;
+            // Check for presence of JPA entities (with PascalCase)
+            const entityJpaPattern = /\b[A-Z][a-zA-Z0-9]*\b(?!\s*\.)/g;
+            const entityMatches = query.match(entityJpaPattern) || [];
+            if (entityMatches.length > 0) {
+                jpqlScore += 2;
+            }
+
+            return nativeScore >= jpqlScore;
         }
 
         // Command to test a selected query
@@ -371,7 +567,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 vscode.commands.executeCommand('hibernate-query-tester-sidebar.focus');
             })
         );
- 
+
         // Editor context command
         context.subscriptions.push(
             vscode.commands.registerTextEditorCommand('hibernate-query-tester.testQueryContext', (editor) => {
@@ -395,7 +591,7 @@ export async function activate(context: vscode.ExtensionContext) {
             })
         );
         telemetryService.sendActivationEvent();
-        
+
         // Create a status bar item for quick access
         const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
         statusBarItem.text = `$(database) Hibernate Query Tester [${actualPort}]`;

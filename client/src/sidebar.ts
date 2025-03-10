@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { QueryClient } from './queryClient';
 import { Storage } from './storage';
 import { log } from 'console';
+import { QueryInfo } from './types';
+
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
     private _webview?: vscode.Webview;
@@ -368,7 +370,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    // Enhanced regex for _scanQueries()
+    // regex for _scanQueries()
     private _scanQueries() {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -381,82 +383,81 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         }
 
         const text = editor.document.getText();
-        const queries: string[] = [];
 
-        // Function to extract a complete query, including concatenations
-        const extractFullQuery = (text: string, startIndex: number, endMarker = ';') => {
-            // Find the end of the statement
-            let endIndex = text.indexOf(endMarker, startIndex);
-            if (endIndex === -1) {
-                // Try to find the end of the function if no semicolon is found
-                endIndex = text.indexOf('}', startIndex);
-                if (endIndex === -1) return null;
-            }
+        const queries: QueryInfo[] = [];
 
-            // Extract the block that potentially contains the query
-            const block = text.substring(startIndex, endIndex);
-
-            // Extract only the content between quotes
-            const stringPattern = /["']([^"']+)["']/g;
-            let match;
-            let fullQuery = '';
-
-            while ((match = stringPattern.exec(block)) !== null) {
-                if (match[1]) {
-                    fullQuery += match[1];
-                }
-            }
-
-            return fullQuery.trim();
-        };
-
-        // 1. Capture String sql/jpql/hql declarations
-        const sqlDeclarationPattern = /String\s+(sql\w*|jpql|hql|consulta\w*)\s*=\s*["']/g;
+        // 1. Scan for String variable declarations (SQL, JPQL, HQL)
+        const sqlDeclarationPattern = /String\s+(sql\w*|jpql|hql|consulta\w*)\s*=\s*([^;]*);/g;
         let match;
 
         while ((match = sqlDeclarationPattern.exec(text)) !== null) {
-            const query = extractFullQuery(text, match.index);
-            if (query && !queries.includes(query)) {
-                queries.push(query);
+            const variableName = match[1].toLowerCase();
+            const queryContent = match[2];
+
+            // Determine if it's likely a native query based on variable naming
+            const likelyNative = variableName.startsWith('sql') ||
+                !variableName.includes('jpql') &&
+                !variableName.includes('hql');
+
+            const extractedQuery = this._extractQueryFromContent(queryContent, likelyNative);
+
+            if (extractedQuery.query && !this._isDuplicateQuery(queries, extractedQuery.query)) {
+                queries.push(extractedQuery);
             }
         }
 
-        // 2. Capture createQuery/createNativeQuery
-        const createQueryPattern = /(?:entityManager|em|session)\.create(?:Native)?Query\s*\(\s*["']/g;
+        // 2. Scan for createQuery/createNativeQuery method calls
+        const createQueryPattern = /(\.create(?:Native)?Query\s*\()([^;)]*)/g;
+
         while ((match = createQueryPattern.exec(text)) !== null) {
-            const query = extractFullQuery(text, match.index, ')');
-            if (query && !queries.includes(query)) {
-                queries.push(query);
+            const methodCall = match[1];
+            const queryContent = match[2];
+
+            // Determine if it's a native query from the method name
+            const isNative = methodCall.includes('Native');
+
+            const extractedQuery = this._extractQueryFromContent(queryContent, isNative);
+
+            if (extractedQuery.query && !this._isDuplicateQuery(queries, extractedQuery.query)) {
+                queries.push(extractedQuery);
             }
         }
 
-        // 3. Capture @Query and @NamedQuery
-        const annotationQueryPattern = /@(?:Named)?Query\s*\(\s*(?:nativeQuery\s*=\s*(?:true|false)\s*,\s*)?(?:value\s*=\s*)?["']/g;
-        while ((match = annotationQueryPattern.exec(text)) !== null) {
-            const query = extractFullQuery(text, match.index, ')');
-            if (query && !queries.includes(query)) {
-                queries.push(query);
+        // 3. Scan for JPA annotations (@Query, @NamedQuery)
+        const annotationPattern = /@(?:Named)?Query\s*\(\s*(?:name\s*=\s*["'].*?["']\s*,\s*)?(?:nativeQuery\s*=\s*(true|false)\s*,\s*)?(?:value\s*=\s*)?(["'].*?["'])/g;
+
+        while ((match = annotationPattern.exec(text)) !== null) {
+            const isNative = match[1]?.toLowerCase() === 'true';
+            const queryContent = match[2];
+
+            const extractedQuery = this._extractQueryFromContent(queryContent, isNative);
+
+            if (extractedQuery.query && !this._isDuplicateQuery(queries, extractedQuery.query)) {
+                queries.push(extractedQuery);
             }
         }
 
-        // Clean results - remove empty lines and extra spaces
-        const cleanedQueries = queries.map(query => {
-            // Remove line breaks and extra spaces
-            return query.replace(/\s+/g, ' ').trim();
-        }).filter(query => query.length > 0);
+        // 4. Process results
+        if (queries.length > 0) {
+            // Format results for display/storage
+            const formattedQueries = queries.map(q => ({
+                query: this._formatQueryScan(q.query),
+                isNative: q.isNative
+            }));
 
-        // Remove duplicates
-        const uniqueQueries = [...new Set(cleanedQueries)];
-
-        if (uniqueQueries.length > 0) {
             // Save the found queries
-            this.storage.saveScannedQueries(uniqueQueries);
+            const queryStrings = queries.map(q => this._formatQueryScan(q.query) as string);
+            this.storage.saveScannedQueries(queryStrings);
+
+            // Count of each type for the message
+            const nativeCount = formattedQueries.filter(q => q.isNative).length;
+            const jpqlCount = formattedQueries.length - nativeCount;
 
             this.postMessage({
                 command: 'scanResult',
                 success: true,
-                queries: uniqueQueries,
-                message: `Found ${uniqueQueries.length} queries in the document.`
+                queries: queryStrings,
+                message: `Found ${queries.length} queries (${nativeCount} SQL, ${jpqlCount} JPQL) in the document.`
             });
         } else {
             this.postMessage({
@@ -465,6 +466,158 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 message: 'No queries found in the document.'
             });
         }
+    }
+
+    /**
+     * Helper function to extract query from content that may contain string concatenation
+     * 
+     * @param content - The content potentially containing a query
+     * @param isNative - Whether this is expected to be a native SQL query
+     * @returns QueryInfo with the extracted query and its type
+     */
+    private _extractQueryFromContent(content: string, isNative: boolean): QueryInfo {
+        // Extract string literals from the content
+        const extractResult = {
+            query: '',
+            isNative: isNative
+        };
+
+        // Handle string concatenation
+        const parts = content.split(/\s*\+\s*/);
+        let extractedContent = '';
+
+        for (const part of parts) {
+            // Extract content from quoted parts
+            const stringMatch = part.match(/(['"])((?:\\\1|.)*?)\1/);
+            if (stringMatch) {
+                extractedContent += stringMatch[2];
+            }
+        }
+
+        // Post-process the query
+        if (extractedContent) {
+            extractResult.query = this._processExtractedQuery(extractedContent, isNative);
+
+            // If type wasn't explicitly specified, determine it based on query content
+            if (isNative === null || isNative === undefined) {
+                extractResult.isNative = this._determineIfNative(extractResult.query);
+            }
+        }
+
+        return extractResult;
+    }
+
+    /**
+     * Process extracted query to fix common issues like nested quotes
+     * 
+     * @param query - The extracted query
+     * @param isNative - Whether it's a native SQL query
+     * @returns Processed query
+     */
+    private _processExtractedQuery(query: string, isNative: boolean): string {
+        let processedQuery = query.trim();
+
+        // Fix nested quotes in SQL functions if this is a native query
+        if (isNative) {
+            // Fix date format patterns in to_char function
+            processedQuery = processedQuery.replace(/to_char\s*\(([^,]+),\s*'([^']+)(?!')/gi,
+                (match, expr, format) => `to_char(${expr}, '${format}'`);
+
+            // Fix unclosed quotes in date patterns
+            if (processedQuery.includes("'YYYY") && !processedQuery.includes("'YYYY'")) {
+                processedQuery = processedQuery.replace(/'YYYY(?!\s*')/g, "'YYYY'");
+            }
+
+            if (processedQuery.includes("'MM") && !processedQuery.includes("'MM'")) {
+                processedQuery = processedQuery.replace(/'MM(?!\s*')/g, "'MM'");
+            }
+
+            if (processedQuery.includes("'DD") && !processedQuery.includes("'DD'")) {
+                processedQuery = processedQuery.replace(/'DD(?!\s*')/g, "'DD'");
+            }
+        }
+
+        return processedQuery;
+    }
+
+    /**
+     * Helper function to determine if a query is native SQL or JPQL
+     * 
+     * @param query - The query to analyze
+     * @returns boolean - True if likely native SQL, false if likely JPQL
+     */
+    private _determineIfNative(query: string): boolean {
+        // JPQL indicators
+        const jpqlIndicators = [
+            /JOIN\s+FETCH/i,                  // JOIN FETCH is specific to JPQL
+            /\bMEMBER\s+OF\b/i,               // MEMBER OF is specific to JPQL
+            /\bIS\s+EMPTY\b/i,                // IS EMPTY is specific to JPQL
+            /\bNEW\s+[a-zA-Z0-9_.]+\s*\(/i,   // NEW constructor in JPQL
+            /\bFROM\s+[A-Z][a-zA-Z0-9]*\b/i,  // Entity names in PascalCase
+            /\.[a-zA-Z][a-zA-Z0-9]*\b/i       // Property access with dot notation
+        ];
+
+        // Native SQL indicators
+        const nativeSqlIndicators = [
+            /\b[a-z_]+\.[a-z_]+\.[a-z_]+\b/i, // Schema references like schema.table.column
+            /\b[a-z_]+\.[a-z_]+\b/i,          // Table references with schema 
+            /to_char\s*\(/i,                  // Oracle to_char function
+            /\b[a-z_]+_[a-z_]+\b/i            // Snake case table/column names
+        ];
+
+        let jpqlScore = 0;
+        let nativeScore = 0;
+
+        // Check JPQL indicators
+        for (const pattern of jpqlIndicators) {
+            if (pattern.test(query)) {
+                jpqlScore += 2;
+            }
+        }
+
+        // Check native SQL indicators
+        for (const pattern of nativeSqlIndicators) {
+            if (pattern.test(query)) {
+                nativeScore += 2;
+            }
+        }
+
+        // Additional checks
+        if (query.includes('_')) {
+            nativeScore += 1; // Underscores common in SQL table/column names
+        }
+
+        // Check for JPA entity names (PascalCase)
+        const entityJpaPattern = /\b[A-Z][a-zA-Z0-9]*\b(?!\s*\.)/g;
+        const entityMatches = query.match(entityJpaPattern) || [];
+        if (entityMatches.length > 0) {
+            jpqlScore += 2;
+        }
+
+        return nativeScore >= jpqlScore;
+    }
+
+    /**
+     * Format query for better display
+     * 
+     * @param query - The query to format
+     * @returns Formatted query
+     */
+    private _formatQueryScan(query: string): string {
+        // Remove excessive whitespace and normalize line breaks
+        return query.replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * Check if a query is already in the list (avoid duplicates)
+     * 
+     * @param queries - List of existing queries
+     * @param newQuery - Query to check for duplication
+     * @returns boolean - True if duplicate found
+     */
+    private _isDuplicateQuery(queries: QueryInfo[], newQuery: string): boolean {
+        const normalizedNewQuery = this._formatQueryScan(newQuery);
+        return queries.some(q => this._formatQueryScan(q.query) === normalizedNewQuery);
     }
 
     private _saveConfiguration(config: any) {
@@ -1169,6 +1322,63 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             </style>
         </head>
         <body>
+             
+                <!-- Modals -->
+                <div id="save-favorite-modal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Save Query as Favorite</h3>
+                            <span class="close-btn" id="close-favorite-modal">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="favorite-name">Favorite Query Name</label>
+                                <input type="text" id="favorite-name" placeholder="Ex: Customer Query">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="cancel-save-favorite" class="secondary">Cancel</button>
+                            <button id="confirm-save-favorite">Save</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="save-param-set-modal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Save Parameter Set</h3>
+                            <span class="close-btn" id="close-param-set-modal">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="param-set-name">Set Name</label>
+                                <input type="text" id="param-set-name" placeholder="Ex: Default Filters">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="cancel-save-param-set" class="secondary">Cancel</button>
+                            <button id="confirm-save-param-set">Save</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="load-param-set-modal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Load Parameter Set</h3>
+                            <span class="close-btn" id="close-load-param-set-modal">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div id="param-sets-selector" class="list-container" style="max-height: 200px;">
+                                <!-- List of parameter sets -->
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="cancel-load-param-set" class="secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="container">
                 <div id="notifications-container"></div>
                 
@@ -1403,63 +1613,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
                     <button id="save-config-btn">Save Settings</button>
                 </div>
-                
-                <!-- Modals -->
-                <div id="save-favorite-modal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3>Save Query as Favorite</h3>
-                            <span class="close-btn" id="close-favorite-modal">&times;</span>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label for="favorite-name">Favorite Query Name</label>
-                                <input type="text" id="favorite-name" placeholder="Ex: Customer Query">
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button id="cancel-save-favorite" class="secondary">Cancel</button>
-                            <button id="confirm-save-favorite">Save</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="save-param-set-modal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3>Save Parameter Set</h3>
-                            <span class="close-btn" id="close-param-set-modal">&times;</span>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label for="param-set-name">Set Name</label>
-                                <input type="text" id="param-set-name" placeholder="Ex: Default Filters">
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button id="cancel-save-param-set" class="secondary">Cancel</button>
-                            <button id="confirm-save-param-set">Save</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="load-param-set-modal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3>Load Parameter Set</h3>
-                            <span class="close-btn" id="close-load-param-set-modal">&times;</span>
-                        </div>
-                        <div class="modal-body">
-                            <div id="param-sets-selector" class="list-container" style="max-height: 200px;">
-                                <!-- List of parameter sets -->
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button id="cancel-load-param-set" class="secondary">Cancel</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+           
 
             <script>
                 (function() {
