@@ -9,6 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.persistence.Entity;
+import javax.persistence.Embeddable;
+import javax.persistence.MappedSuperclass;
+import java.io.File;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -78,8 +81,44 @@ public class HibernateManager {
             
             MetadataSources sources = new MetadataSources(registry);
             
-            // Adds scanned entities
+            // Adds scanned entities from library
             Set<Class<?>> entities = EntityScanner.scanEntities(entityLibPath, entityPackages);
+            
+            // If projectScan is enabled and we're not already using persistence.xml 
+            // (as persistence.xml already includes project entities)
+            if (projectScan && (entityLibPath == null || !entityLibPath.toLowerCase().endsWith("persistence.xml"))) {
+                LOG.info("Project scanning enabled, looking for project entities");
+                
+                // Determine project root directory
+                File projectRoot = determineProjectRoot();
+                if (projectRoot != null) {
+                    LOG.info("Project root determined: {}", projectRoot.getAbsolutePath());
+                    
+                    // Search for classes directory
+                    File classesDir = findClassesDirectory(projectRoot);
+                    if (classesDir != null && classesDir.exists()) {
+                        LOG.info("Project classes directory found: {}", classesDir.getAbsolutePath());
+                        
+                        // Scan project entities
+                        Set<Class<?>> projectEntities = EntityScanner.scanEntities(
+                            classesDir.getAbsolutePath(), 
+                            entityPackages
+                        );
+                        
+                        // Add project entities to the set
+                        for (Class<?> projectEntity : projectEntities) {
+                            if (!entities.contains(projectEntity)) {
+                                entities.add(projectEntity);
+                                LOG.debug("Added project entity: {}", projectEntity.getName());
+                            }
+                        }
+                    } else {
+                        LOG.warn("Could not find project classes directory");
+                    }
+                } else {
+                    LOG.warn("Could not determine project root directory");
+                }
+            }
             
             if (entities.isEmpty()) {
                 LOG.warn("No entities found for mapping.");
@@ -87,12 +126,15 @@ public class HibernateManager {
                 LOG.info("Adding {} entities to Hibernate", entities.size());
                 
                 for (Class<?> entity : entities) {
-                    // Checks if the class has the @Entity annotation before adding
-                    if (entity.isAnnotationPresent(Entity.class)) {
+                    // Add Entity, Embeddable, and MappedSuperclass types
+                    if (entity.isAnnotationPresent(Entity.class) || 
+                        entity.isAnnotationPresent(Embeddable.class) || 
+                        entity.isAnnotationPresent(MappedSuperclass.class)) {
+                        
                         sources.addAnnotatedClass(entity);
-                        LOG.debug("Entity added: {}", entity.getName());
+                        LOG.debug("Class added to Hibernate: {}", entity.getName());
                     } else {
-                        LOG.warn("Class {} does not have @Entity annotation, ignoring", entity.getName());
+                        LOG.warn("Class {} does not have required JPA annotations, ignoring", entity.getName());
                     }
                 }
             }
@@ -126,6 +168,90 @@ public class HibernateManager {
             LOG.error("Error configuring Hibernate: {}", e.getMessage(), e);
             throw new RuntimeException("Hibernate initialization failed", e);
         }
+    }
+    
+    /**
+     * Attempts to determine the project root directory
+     */
+    private static File determineProjectRoot() {
+        try {
+            // Get the path of the current class
+            String classPath = HibernateManager.class.getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .getPath();
+            
+            File classDir = new File(classPath);
+            
+            // If it's a JAR file, get the parent directory
+            if (classDir.isFile() && classDir.getName().endsWith(".jar")) {
+                classDir = classDir.getParentFile();
+            }
+            
+            // Search for project root
+            return findProjectRoot(classDir);
+        } catch (Exception e) {
+            LOG.error("Error determining project root: {}", e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Recursively searches for the project root from a directory
+     */
+    private static File findProjectRoot(File dir) {
+        if (dir == null) {
+            return null;
+        }
+        
+        // Check for common project root markers
+        if (new File(dir, "pom.xml").exists() || 
+            new File(dir, "build.gradle").exists() || 
+            new File(dir, ".git").exists()) {
+            return dir;
+        }
+        
+        // Search in parent directory
+        return findProjectRoot(dir.getParentFile());
+    }
+    
+    /**
+     * Finds the classes directory in a project
+     */
+    private static File findClassesDirectory(File projectRoot) {
+        // Common locations for compiled classes
+        String[] possiblePaths = {
+            "target/classes",              // Standard Maven
+            "build/classes/java/main",     // Standard Gradle
+            "out/production/classes",      // IntelliJ IDEA
+            "bin"                          // Eclipse
+        };
+        
+        for (String path : possiblePaths) {
+            File dir = new File(projectRoot, path);
+            if (dir.exists() && dir.isDirectory()) {
+                return dir;
+            }
+        }
+        
+        // Recursively search in subdirectories
+        File[] subdirs = projectRoot.listFiles(File::isDirectory);
+        if (subdirs != null) {
+            for (File subdir : subdirs) {
+                if (subdir.getName().equals("target") || 
+                    subdir.getName().equals("build") || 
+                    subdir.getName().equals("out") || 
+                    subdir.getName().equals("bin")) {
+                    
+                    File classesDir = findClassesDirectory(subdir);
+                    if (classesDir != null) {
+                        return classesDir;
+                    }
+                }
+            }
+        }
+        
+        return null;
     }
 
     /**
