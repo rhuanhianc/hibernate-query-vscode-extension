@@ -14,13 +14,13 @@ export class QueryClient {
     private hibernateVersion: string;
     private logger: Logger;
 
-    constructor() {
+    constructor(port?: number) {
         this.client = new net.Socket();
         this.logger = Logger.getInstance();
 
         // Get connection settings
         const config = vscode.workspace.getConfiguration('queryTester');
-        this.serverPort = config.get('serverPort') || 8089;
+        this.serverPort = port || config.get('serverPort') || 8089;
         this.serverHost = config.get('serverHost') || '127.0.0.1';
         this.hibernateVersion = config.get('hibernateVersion') || '5.4.30.Final';
 

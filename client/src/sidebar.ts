@@ -7,10 +7,18 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     private _webview?: vscode.Webview;
     private queryClient: QueryClient;
     private storage: Storage;
+    private serverPort: number;
 
-    constructor(context: vscode.ExtensionContext) {
+    constructor(context: vscode.ExtensionContext, serverPort?: number) {
         this.queryClient = new QueryClient();
         this.storage = new Storage(context);
+        if (serverPort) {
+            this.serverPort = serverPort;
+        } else {
+            const config = vscode.workspace.getConfiguration('queryTester');
+            this.serverPort = config.get<number>('serverPort') || 8089;
+        }
+        this.queryClient = new QueryClient(this.serverPort);
     }
 
     public resolveWebviewView(webviewView: vscode.WebviewView) {
@@ -1366,7 +1374,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     <div class="section">
                         <h3>Hibernate Entities</h3>
                         <div class="form-group">
-                            <label for="entity-lib-path">Path to JAR with Entities</label>
+                            <label for="entity-lib-path">Path to JAR with Entities or Persistence.xml EX: /path/to/your.jar or /path/to/persistence.xml</label>
                             <input type="text" id="entity-lib-path">
                         </div>
                         <div class="form-group">
