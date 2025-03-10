@@ -26,3 +26,5 @@ yarn-error.log*
 *.vsix
 *.jar
 
+*real.ts
+

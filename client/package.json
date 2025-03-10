@@ -2,7 +2,7 @@
     "name": "hibernate-query-tester",
     "displayName": "Hibernate Query Tester",
     "description": "Test JPQL/HQL and native SQL queries with Hibernate",
-    "version": "0.1.1",
+    "version": "0.1.5",
     "publisher": "RhuanHianc",
     "icon": "images/icon.png",
     "engines": {
@@ -180,6 +180,11 @@
                     ],
                     "default": "INFO",
                     "description": "Log Level for Hibernate Query Tester (TRACE, DEBUG, INFO, WARN, ERROR)"
+                },
+                "queryTester.telemetry.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enables sending of anonymous telemetry data to help improve the extension"
                 }
             }
         },
@@ -199,6 +204,7 @@
         ]
     },
     "dependencies": {
+        "@vscode/extension-telemetry": "^0.9.8",
         "hibernate-query-tester": "file:",
         "vscode-languageclient": "^8.0.0"
     },
@@ -226,6 +232,7 @@
         "url": "https://github.com/rhuanhianc/hibernate-query-vscode-extension/issues"
     },
     "changelog": {
+        "0.1.5": "Added log level configuration and fixed some bugs",
         "0.1.0": "Initial release"
     }
 }

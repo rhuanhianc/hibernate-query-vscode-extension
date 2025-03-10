@@ -22,6 +22,7 @@ Test and debug JPQL/HQL and SQL queries directly in VS Code, with full Hibernate
 - 🔎 **Automatic scanner** to find queries in your code
 - 🔧 **Support for Hibernate 5 and 6**
 - 📦 **Parameter sets** reusable across different queries
+- 📜 **Log Level Configuration** to control the verbosity of the logs
 
 ## 🔧 Installation
 
@@ -211,6 +212,14 @@ WHERE p.price BETWEEN :minPrice AND :maxPrice
 
 ## Release Notes
 
+### 0.1.5
+
+- Added log level configuration
+- Improved error handling
+- Fixed minor bugs
+
+### 0.1.0
+
 - Initial release of Hibernate Query Tester.
 
 ## 📣 Feedback and Contributions
@@ -231,3 +240,15 @@ This extension is licensed under the [MIT License](LICENSE).
 - [Rhuan Hianc](https://github.com/rhuanhianc)
 
 **Note:** This is a study project and is currently under development. Feedback and contributions are welcome!
+
+## Telemetry Temporary
+
+This extension collects anonymous usage data to help improve the product. We only collect:
+
+- Extension installs
+- Extension activations
+- Errors during execution
+
+We do not collect any query content, database settings, or personal information.
+
+You can disable telemetry in the extension settings or in VS Code.

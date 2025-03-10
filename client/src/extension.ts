@@ -4,14 +4,20 @@ import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Logger } from './logger';
+import { TelemetryService } from './telemetry';
 
 let javaProcess: ChildProcess | null = null;
 let sidebarProvider: SidebarProvider | null = null;
 let logger: Logger;
+let telemetryService: TelemetryService;
 
 export async function activate(context: vscode.ExtensionContext) {
     logger = Logger.getInstance();
     logger.info('Enabling Hibernate Query Tester Extension...');
+
+    // Initialize telemetry
+    telemetryService = TelemetryService.getInstance();
+    telemetryService.setExtensionContext(context);
 
     context.subscriptions.push(
         vscode.commands.registerCommand('hibernate-query-tester.showLogs', () => {
@@ -31,6 +37,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const errorMsg = `Server file not found: ${serverPath}`;
         logger.error(errorMsg);
         vscode.window.showErrorMessage(errorMsg);
+        telemetryService.sendConnectionErrorEvent();
         return;
     }
 
@@ -53,6 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
             if (!javaProcess) {
                 clearTimeout(timeout);
                 reject(new Error('Failed to start Java process.'));
+                telemetryService.sendConnectionErrorEvent();
                 return;
             }
 
@@ -66,6 +74,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
                 if (output.includes('Server started')) {
                     clearTimeout(timeout);
+                    telemetryService.sendConnectionSuccessEvent();
                     resolve();
                 }
             });
@@ -77,12 +86,14 @@ export async function activate(context: vscode.ExtensionContext) {
             javaProcess.on('error', (err: { message: any; }) => {
                 clearTimeout(timeout);
                 logger.error(`Error spawning Java process: ${err.message}`);
+                telemetryService.sendConnectionErrorEvent();
                 reject(err);
             });
 
             javaProcess.on('exit', (code: number) => {
                 if (code !== 0) {
                     clearTimeout(timeout);
+                    telemetryService.sendConnectionErrorEvent();
                     reject(new Error(`Java server terminated with code ${code}`));
                 }
             });
@@ -275,8 +286,8 @@ export async function activate(context: vscode.ExtensionContext) {
                     vscode.window.showErrorMessage('Select a query to test!');
                     return;
                 }
-
                 const { query, isNative } = extractQuery(text);
+                telemetryService.sendQueryExecutedEvent(isNative);
                 sidebarProvider?.postMessage({
                     command: 'testQuery',
                     query,
@@ -287,7 +298,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 vscode.commands.executeCommand('hibernate-query-tester-sidebar.focus');
             })
         );
-
+ 
         // Editor context command
         context.subscriptions.push(
             vscode.commands.registerTextEditorCommand('hibernate-query-tester.testQueryContext', (editor) => {
@@ -310,7 +321,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 vscode.commands.executeCommand('hibernate-query-tester-sidebar.focus');
             })
         );
-
+        telemetryService.sendActivationEvent();
         // Create a status bar item for quick access
         const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
         statusBarItem.text = "$(database) Hibernate Query Tester";
@@ -325,6 +336,7 @@ export async function activate(context: vscode.ExtensionContext) {
     } catch (err: any) {
         startingMessage.dispose();
         logger.error(`Failed to start extension: ${err.message}`);
+        telemetryService.sendConnectionErrorEvent();
         vscode.window.showErrorMessage(`Hibernate Query Tester: Error starting - ${err.message}`);
     }
 }
@@ -333,5 +345,8 @@ export function deactivate() {
     if (javaProcess) {
         javaProcess.kill();
         logger.info('Hibernate Query Tester Server stopped');
+    }
+    if (telemetryService) {
+        telemetryService.dispose();
     }
 }

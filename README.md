@@ -97,12 +97,14 @@ The extension consists of two main components:
 ### 1. Client (VS Code Extension)
 
 The client is implemented in TypeScript and is responsible for:
+
 - Displaying the graphical interface in VS Code
 - Managing query history and favorites
 - Sending queries to the Java server
 - Presenting results in a user-friendly manner
 
 Main modules:
+
 - `extension.ts`: Initializes the extension and manages the lifecycle
 - `sidebar.ts`: Implements the sidebar panel user interface
 - `queryClient.ts`: Manages communication with the Java server
@@ -111,11 +113,13 @@ Main modules:
 ### 2. Server (Java Application)
 
 The server is implemented in Java and executes queries in Hibernate:
+
 - Starts automatically when the extension is activated
 - Dynamically configures Hibernate based on settings
 - Executes queries and returns formatted results
 
 Main classes:
+
 - `Server.java`: Manages connections and routes requests
 - `QueryExecutor.java`: Executes JPQL and native SQL queries
 - `HibernateManager.java`: Configures the Hibernate session factory
@@ -137,6 +141,7 @@ Main classes:
 ### Query Editor
 
 The query editor provides:
+
 - Syntax highlighting for JPQL/HQL
 - Formatting button to improve readability
 - Option to toggle between JPQL/HQL and native SQL queries
@@ -144,6 +149,7 @@ The query editor provides:
 ### Parameter Management
 
 The extension offers:
+
 - Automatic detection of named and positional parameters (:name, ?1)
 - Parameter editor with validation
 - Saving parameter sets for reuse
@@ -151,6 +157,7 @@ The extension offers:
 ### Results Visualization
 
 Results are presented in:
+
 - Interactive table format
 - With details about execution time and number of records
 - Option to copy results as JSON
@@ -158,6 +165,7 @@ Results are presented in:
 ### History and Favorites
 
 Allows:
+
 - Access to previously executed queries
 - Save favorite queries with custom names
 - Organize queries by frequent use
