@@ -1,11 +1,13 @@
 # Hibernate Query Tester for VS Code
 
-<img src="https://github.com/rhuanhianc/hibernate-query-vscode-extension/blob/main/client/images/icon.png" alt="Hibernate Query Tester Logo" width="120" align="right"/>
+<img src="https://github.com/rhuanhianc/hibernate-query-vscode-extension/blob/main/client/images/icon.png?raw=true" alt="Hibernate Query Tester Logo" width="120" align="right"/>
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://marketplace.visualstudio.com/manage/publishers/RhuanHiancextensionshibernate-query-tester)
+[![Version](https://img.shields.io/badge/version-0.2.2-blue.svg)](https://marketplace.visualstudio.com/manage/publishers/RhuanHiancextensionshibernate-query-tester)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Test and debug JPQL/HQL and SQL queries directly in VS Code, with full Hibernate support!
+
+<img src="https://github.com/rhuanhianc/hibernate-query-vscode-extension/blob/main/exemple.gif?raw=true" width="800">
 
 ## 📋 Overview
 
@@ -211,6 +213,14 @@ WHERE p.price BETWEEN :minPrice AND :maxPrice
 3. Enable project scanning if entities are in the current project
 
 ## Release Notes
+
+### 0.2.2
+
+- Improved code quality
+- Added UTF-8 support when reading and writing client data
+- Added response timeout setting in QueryClient to wait longer for response
+- Added pagination to the results table and updates the interface to display the total number of records
+- Fixed minor bugs
 
 ### 0.2.1
 
