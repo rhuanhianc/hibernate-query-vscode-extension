@@ -241,6 +241,21 @@ button.icon-button {
     z-index: 1;
 }
 
+
+#pagination-controls button {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+#pagination-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#page-info {
+    font-size: 14px;
+}
+
 .result-actions {
     display: flex;
     gap: 8px;
@@ -549,3 +564,4 @@ button.icon-button {
 ::-webkit-scrollbar-thumb:hover {
     background-color: rgba(150, 150, 150, 0.8);
 }
+

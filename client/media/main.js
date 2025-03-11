@@ -3,11 +3,14 @@
     let activeTab = 'query';
     let activeQueryList = 'scanned';
     let currentResults = null;
+    let currentPage = 1; 
+    const resultsPerPage = 10; 
     let autoDetectedParams = [];
     let savedParamSets = {};
     let favoriteQueries = {};
     let scannedQueries = [];
     let queryHistory = [];
+
     
     // Tabs
     document.querySelectorAll('.tab').forEach(tab => {
@@ -747,7 +750,78 @@
             config
         });
     });
+
+    function updateResultsTable(results, page = 1) {
+        const tableContainer = document.getElementById('result-table-container');
+        const paginationControls = document.getElementById('pagination-controls');
+        const prevBtn = document.getElementById('prev-page-btn');
+        const nextBtn = document.getElementById('next-page-btn');
+        const pageInfo = document.getElementById('page-info');
     
+        if (!results || !results.columns || results.columns.length === 0 || !results.rows || results.rows.length === 0) {
+            tableContainer.innerHTML = '<p>No results found.</p>';
+            paginationControls.style.display = 'none';
+            return;
+        }
+    
+        // Calcular índices para a página atual
+        const totalRows = results.rows.length;
+        const totalPages = Math.ceil(totalRows / resultsPerPage);
+        currentPage = Math.min(Math.max(1, page), totalPages); // Garantir que a página esteja no intervalo válido
+    
+        const startIndex = (currentPage - 1) * resultsPerPage;
+        const endIndex = Math.min(startIndex + resultsPerPage, totalRows);
+        const paginatedRows = results.rows.slice(startIndex, endIndex);
+    
+        // Criar tabela
+        const table = document.createElement('table');
+        table.className = 'result-table';
+    
+        // Cabeçalho
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        results.columns.forEach(column => {
+            const th = document.createElement('th');
+            th.textContent = column;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+    
+        // Corpo
+        const tbody = document.createElement('tbody');
+        paginatedRows.forEach(row => {
+            const tr = document.createElement('tr');
+            results.columns.forEach(column => {
+                const td = document.createElement('td');
+                const value = row[column];
+                if (value === null || value === undefined) {
+                    td.innerHTML = '<em style="opacity: 0.5;">null</em>';
+                } else if (typeof value === 'object') {
+                    td.textContent = JSON.stringify(value);
+                } else {
+                    td.textContent = value;
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+    
+        tableContainer.innerHTML = '';
+        tableContainer.appendChild(table);
+    
+        // Atualizar controles de paginação
+        paginationControls.style.display = 'flex';
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${startIndex + 1}-${endIndex} of ${totalRows})`;
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages;
+    
+        // Listeners para os botões
+        prevBtn.onclick = () => updateResultsTable(results, currentPage - 1);
+        nextBtn.onclick = () => updateResultsTable(results, currentPage + 1);
+    }
+
     // Event listener for the Hibernate version select
     document.getElementById('hibernate-version').addEventListener('change', function(event) {
         const newVersion = event.target.value;
@@ -811,87 +885,39 @@
                 });
                 break;
                 
-            case 'queryResult':
-                // Update UI to show query results
-                document.getElementById('result-placeholder').style.display = 'none';
-                document.getElementById('result-content').style.display = 'block';
+                case 'queryResult':
+                    document.getElementById('result-placeholder').style.display = 'none';
+                    document.getElementById('result-content').style.display = 'block';
                 
-                // Save the raw results for copying
-                currentResults = message.raw;
+                    // Salvar resultados brutos
+                    currentResults = message.raw;
                 
-                // Update info section
-                const resultInfo = document.getElementById('result-info');
-                resultInfo.innerHTML = `
-                    <div class="result-info-item">
-                        <span>Status:</span>
-                        <span class="badge ${message.status === 'SUCCESS' ? 'success' : 'error'}">${message.status}</span>
-                    </div>
-                    <div class="result-info-item">
-                        <span>Time:</span>
-                        <span>${message.executionTime}ms</span>
-                    </div>
-                    <div class="result-info-item">
-                        <span>Results:</span>
-                        <span>${message.rowCount}</span>
-                    </div>
-                    <div class="result-info-item">
-                        <span>${message.message}</span>
-                    </div>
-                `;
+                    // Atualizar informações
+                    const resultInfo = document.getElementById('result-info');
+                    resultInfo.innerHTML = `
+                        <div class="result-info-item">
+                            <span>Status:</span>
+                            <span class="badge ${message.status === 'SUCCESS' ? 'success' : 'error'}">${message.status}</span>
+                        </div>
+                        <div class="result-info-item">
+                            <span>Time:</span>
+                            <span>${message.executionTime}ms</span>
+                        </div>
+                        <div class="result-info-item">
+                            <span>Results:</span>
+                            <span>${message.rowCount}</span>
+                        </div>
+                        <div class="result-info-item">
+                            <span>${message.message}</span>
+                        </div>
+                    `;
                 
-                // Create results table
-                const tableContainer = document.getElementById('result-table-container');
+                    // Renderizar tabela com paginação
+                    updateResultsTable({
+                        columns: message.results.columns,
+                        rows: message.results.rows
+                    }, 1);
                 
-                if (message.results && message.results.columns && message.results.columns.length > 0) {
-                    // Create table
-                    const table = document.createElement('table');
-                    table.className = 'result-table';
-                    
-                    // Create header
-                    const thead = document.createElement('thead');
-                    const headerRow = document.createElement('tr');
-                    
-                    message.results.columns.forEach(column => {
-                        const th = document.createElement('th');
-                        th.textContent = column;
-                        headerRow.appendChild(th);
-                    });
-                    
-                    thead.appendChild(headerRow);
-                    table.appendChild(thead);
-                    
-                    // Create body
-                    const tbody = document.createElement('tbody');
-                    
-                    message.results.rows.forEach(row => {
-                        const tr = document.createElement('tr');
-                        
-                        message.results.columns.forEach(column => {
-                            const td = document.createElement('td');
-                            const value = row[column];
-                            
-                            // Format value based on type
-                            if (value === null || value === undefined) {
-                                td.innerHTML = '<em style="opacity: 0.5;">null</em>';
-                            } else if (typeof value === 'object') {
-                                td.textContent = JSON.stringify(value);
-                            } else {
-                                td.textContent = value;
-                            }
-                            
-                            tr.appendChild(td);
-                        });
-                        
-                        tbody.appendChild(tr);
-                    });
-                    
-                    table.appendChild(tbody);
-                    tableContainer.innerHTML = '';
-                    tableContainer.appendChild(table);
-                } else {
-                    // No results
-                    tableContainer.innerHTML = '<p>No results found.</p>';
-                }
                 break;
                 
             case 'queryError':
