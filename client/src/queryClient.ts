@@ -106,10 +106,9 @@ export class QueryClient {
                 buffer += data.toString();
                 const lines = buffer.split('\n');
                 
-                // Processar apenas se houver uma linha completa
                 if (lines.length > 1) {
                     clearTimeout(timeout);
-                    this.client.removeListener('data', onData); // Remover listener após processar
+                    this.client.removeListener('data', onData); 
                     try {
                         const response = JSON.parse(lines[0]); // Primeira linha completa
                         this.logger.info(`Response received: ${JSON.stringify(response)}`);
@@ -117,7 +116,7 @@ export class QueryClient {
                     } catch (e: any) {
                         reject(new Error(`Error processing response: ${e.message}`));
                     }
-                    buffer = lines.slice(1).join('\n'); // Guardar resto, se houver
+                    buffer = lines.slice(1).join('\n'); 
                 }
             };
     
