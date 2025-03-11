@@ -57,9 +57,6 @@ public class EntityScanner {
         return scanWithReflections(entityLibPath, entityPackages);
     }
 
-    /**
-     * Scans entities using Reflections (original method)
-     */
     private static Set<Class<?>> scanWithReflections(String entityLibPath, String[] entityPackages) {
         Set<Class<?>> entities = new HashSet<>();
         try {
@@ -162,9 +159,6 @@ public class EntityScanner {
         }
     }
 
-    /**
-     * Scans entities from a persistence.xml file
-     */
     private static Set<Class<?>> scanFromPersistenceXml(String persistenceXmlPath, String[] entityPackages) {
         Set<Class<?>> entities = new HashSet<>();
 
@@ -275,9 +269,6 @@ public class EntityScanner {
         return entities;
     }
 
-    /**
-     * Locates the project root directory from a file
-     */
     private static File findProjectRoot(File file) {
         File currentDir = file.getParentFile();
 
@@ -292,9 +283,6 @@ public class EntityScanner {
         return null;
     }
 
-    /**
-     * Locates the project's compiled classes directory
-     */
     private static File findClassesDirectory(File projectRoot) {
         // Common locations for compilation directories
         String[] possiblePaths = {"target/classes",              // Standard Maven
@@ -327,9 +315,6 @@ public class EntityScanner {
         return null;
     }
 
-    /**
-     * Returns the ClassLoader that should be used to load entities
-     */
     public static ClassLoader getEntityClassLoader() {
         return entityClassLoader != null ? entityClassLoader : Thread.currentThread().getContextClassLoader();
     }

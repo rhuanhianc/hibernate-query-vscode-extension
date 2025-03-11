@@ -26,9 +26,7 @@ public class HibernateManager {
     // Locks for thread-safe access
     private static final ReadWriteLock sessionFactoryLock = new ReentrantReadWriteLock();
 
-    /**
-     * Initializes Hibernate with the provided configurations
-     */
+
     public static void initialize(Map<String, String> dbConfig, String entityLibPath, String[] entityPackages, boolean projectScan, String hibernateVersion) {
         try {
             // Checks if the current configuration is the same as the previous one and returns if there are no changes
@@ -196,9 +194,7 @@ public class HibernateManager {
         }
     }
     
-    /**
-     * Recursively searches for the project root from a directory
-     */
+
     private static File findProjectRoot(File dir) {
         if (dir == null) {
             return null;
@@ -215,9 +211,6 @@ public class HibernateManager {
         return findProjectRoot(dir.getParentFile());
     }
     
-    /**
-     * Finds the classes directory in a project
-     */
     private static File findClassesDirectory(File projectRoot) {
         // Common locations for compiled classes
         String[] possiblePaths = {
@@ -253,10 +246,6 @@ public class HibernateManager {
         
         return null;
     }
-
-    /**
-     * Checks if the current configuration is the same as the previous one
-     */
     private static boolean isSameConfiguration(Map<String, String> dbConfig, String hibernateVersion) {
         // Checks if the Hibernate version has changed
         if (!hibernateVersion.equals(currentHibernateVersion)) {
@@ -274,9 +263,6 @@ public class HibernateManager {
         return true;
     }
 
-    /**
-     * Lists the entities loaded in Hibernate
-     */
     private static void listLoadedEntities(Metadata metadata) {
         LOG.info("Entities loaded in Hibernate:");
         for (org.hibernate.mapping.PersistentClass entityBinding : metadata.getEntityBindings()) {
@@ -284,9 +270,6 @@ public class HibernateManager {
         }
     }
 
-    /**
-     * Determines the Hibernate dialect based on the database URL and Hibernate version
-     */
     private static String getDialect(String url, String hibernateVersion) {
         if (url == null) return getDefaultDialect(hibernateVersion);
         
@@ -313,18 +296,12 @@ public class HibernateManager {
         }
     }
     
-    /**
-     * Returns the default dialect based on the Hibernate version
-     */
     private static String getDefaultDialect(String hibernateVersion) {
         return hibernateVersion.startsWith("6") 
             ? "org.hibernate.dialect.MySQLDialect"       // Hibernate 6.x
             : "org.hibernate.dialect.MySQL8Dialect";     // Hibernate 5.x
     }
 
-    /**
-     * Returns the current SessionFactory, ensuring thread-safe access
-     */
     public static SessionFactory getSessionFactory() {
         sessionFactoryLock.readLock().lock();
         try {

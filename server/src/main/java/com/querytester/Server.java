@@ -71,9 +71,9 @@ public class Server {
 
     private static void handleClient(Socket clientSocket) {
         try (
-            // Usar OutputStreamWriter com UTF-8 para escrita
+            // Use PrintWriter with UTF-8 for writing
             PrintWriter out = new PrintWriter(new OutputStreamWriter(clientSocket.getOutputStream(), "UTF-8"), true);
-            // Usar InputStreamReader com UTF-8 para leitura
+            // Use BufferedReader with UTF-8 for reading
             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), "UTF-8"))
         ) {
             String inputLine = in.readLine();
@@ -115,7 +115,6 @@ public class Server {
         try {
             switch (request.command) {
                 case "executeQuery":
-                    // Initialize Hibernate with specified version and configurations
                     HibernateManager.initialize(
                         request.dbConfig, 
                         request.entityLibPath, 
@@ -129,7 +128,6 @@ public class Server {
                         ? new HashSet<>(Arrays.asList(request.fieldsToInclude)) 
                         : null;
                     
-                    // Execute query based on isNative flag
                     if (request.isNative) {
                         LOG.info("Executing native SQL query: {}", request.query);
                         response = QueryExecutor.executeNativeSql(request.query, request.params);
@@ -160,6 +158,6 @@ public class Server {
         String hibernateVersion;
         Map<String, Object> params;
         String[] fieldsToInclude;
-        boolean isNative; // Flag to indicate if it's a native query (SQL) or JPQL
+        boolean isNative; 
     }
 }

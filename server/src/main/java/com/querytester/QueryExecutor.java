@@ -21,16 +21,10 @@ public class QueryExecutor {
     private static final Map<Class<?>, List<Field>> COLUMN_FIELDS_CACHE = new HashMap<>();
     private static final Map<Class<?>, Field> ID_FIELD_CACHE = new HashMap<>();
 
-    /**
-     * Executes a JPQL/HQL query
-     */
     public static QueryResultDTO executeJpql(String jpql, Map<String, Object> params) {
         return executeJpql(jpql, params, null);
     }
 
-    /**
-     * Executes a JPQL/HQL query with field filtering option
-     */
     public static QueryResultDTO executeJpql(String jpql, Map<String, Object> params, Set<String> fieldsToInclude) {
         validateInput(jpql, params);
         QueryResultDTO result = new QueryResultDTO();
@@ -66,9 +60,7 @@ public class QueryExecutor {
         return result;
     }
 
-    /**
-     * Executes a native SQL query
-     */
+
     public static QueryResultDTO executeNativeSql(String sql, Map<String, Object> params) {
         validateInput(sql, params);
         QueryResultDTO result = new QueryResultDTO();
@@ -105,9 +97,6 @@ public class QueryExecutor {
         return result;
     }
 
-    /**
-     * Converts native query results to uniform map format
-     */
     private static List<Map<String, Object>> convertNativeResultToMaps(List<?> rawResult) {
         if (rawResult == null || rawResult.isEmpty()) {
             return Collections.emptyList();
@@ -152,9 +141,6 @@ public class QueryExecutor {
         }
     }
 
-    /**
-     * Applies parameters to the query, handling named and positional parameters
-     */
     private static void applyParameters(Query<?> query, String queryStr, Map<String, Object> params) {
         if (params == null || params.isEmpty()) return;
         
@@ -181,9 +167,6 @@ public class QueryExecutor {
         });
     }
 
-    /**
-     * Converts parameter value to the appropriate type
-     */
     private static Object convertParameterValue(Object value) {
         if (value == null) return null;
         
@@ -229,9 +212,6 @@ public class QueryExecutor {
         return value;
     }
 
-    /**
-     * Converts JPQL results to maps
-     */
     private static List<Map<String, Object>> convertToMaps(List<?> rawResult, Set<String> fieldsToInclude) {
         if (rawResult == null || rawResult.isEmpty()) {
             return Collections.emptyList();
@@ -287,15 +267,12 @@ public class QueryExecutor {
                             if (value != null) {
                                 Object idValue = extractIdFromEntity(value);
                                 map.put(fieldName + "_id", formatBasicValue(idValue));
-                                
-                                // Also add the toString() value of the related entity for better visualization
                                 map.put(fieldName + "_label", value.toString());
                             } else {
                                 map.put(fieldName + "_id", null);
                                 map.put(fieldName + "_label", null);
                             }
                         } else {
-                            // For basic fields, use the value directly
                             map.put(fieldName, formatBasicValue(value));
                         }
                     } catch (Exception e) {
@@ -311,9 +288,6 @@ public class QueryExecutor {
         return resultMaps;
     }
     
-    /**
-     * Gets all fields that represent columns in the database
-     */
     private static List<Field> getColumnFields(Class<?> entityClass) {
         // Check cache first
         if (COLUMN_FIELDS_CACHE.containsKey(entityClass)) {
@@ -334,9 +308,6 @@ public class QueryExecutor {
         return columnFields;
     }
     
-    /**
-     * Gets all entity fields, including inherited ones
-     */
     private static List<Field> getAllEntityFields(Class<?> entityClass) {
         // Check cache first
         if (ENTITY_FIELDS_CACHE.containsKey(entityClass)) {
@@ -356,9 +327,6 @@ public class QueryExecutor {
         return fields;
     }
     
-    /**
-     * Checks if a field represents a column in the database
-     */
     private static boolean isColumnField(Field field, Class<?> entityClass) {
         // Check JPA column annotations
         if (field.isAnnotationPresent(Column.class) || 
@@ -400,9 +368,6 @@ public class QueryExecutor {
         }
     }
     
-    /**
-     * Checks if a field represents a relationship with another entity
-     */
     private static boolean isEntityField(Field field, Class<?> entityClass) {
         // Check JPA relationship annotations
         if (field.isAnnotationPresent(ManyToOne.class) || 
@@ -431,9 +396,6 @@ public class QueryExecutor {
         }
     }
     
-    /**
-     * Checks if a field is a collection
-     */
     private static boolean isCollection(Field field) {
         return Collection.class.isAssignableFrom(field.getType()) ||
                field.getType().isArray() ||
@@ -441,17 +403,11 @@ public class QueryExecutor {
                field.isAnnotationPresent(ManyToMany.class);
     }
     
-    /**
-     * Checks if a class is a JPA entity
-     */
     private static boolean isEntity(Class<?> type) {
         return type.isAnnotationPresent(Entity.class) ||
                type.isAnnotationPresent(MappedSuperclass.class);
     }
     
-    /**
-     * Extracts the ID from a related entity
-     */
     private static Object extractIdFromEntity(Object entity) {
         if (entity == null) return null;
         
@@ -545,9 +501,6 @@ public class QueryExecutor {
         return value.toString();
     }
 
-    /**
-     * Handles errors in query execution
-     */
     private static void handleError(QueryResultDTO result, Exception e, String errorPrefix) {
         result.setStatus("ERROR");
         result.setMessage(errorPrefix + ": " + e.getMessage());

@@ -3,9 +3,6 @@ package com.querytester.dto;
 import java.util.List;
 import java.util.Map;
 
-/**
- * DTO para resultados de consultas JPQL e SQL
- */
 public class QueryResultDTO {
     private String status = "SUCCESS";
     private String message = "Query executed successfully";
