@@ -24,22 +24,10 @@ export class ConfigService {
     }
 
     public saveConfiguration(config: any): void {
-        // Update VS Code settings
         const configuration = vscode.workspace.getConfiguration('queryTester');
-
-        // Update each property
         Object.keys(config).forEach(key => {
-            if (key === 'dbConfig') {
-                // dbConfig is an object, so we need to update its properties individually
-                const dbConfig = config[key];
-                if (dbConfig) {
-                    Object.keys(dbConfig).forEach(dbKey => {
-                        configuration.update(`dbConfig.${dbKey}`, dbConfig[dbKey], vscode.ConfigurationTarget.Global);
-                    });
-                }
-            } else {
-                configuration.update(key, config[key], vscode.ConfigurationTarget.Global);
-            }
+            configuration.update(key, config[key], vscode.ConfigurationTarget.Global);
+            
         });
     }
 }
