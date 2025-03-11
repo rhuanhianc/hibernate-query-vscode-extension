@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
@@ -69,9 +70,12 @@ public class Server {
     }
 
     private static void handleClient(Socket clientSocket) {
-        try (PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
-            
+        try (
+            // Usar OutputStreamWriter com UTF-8 para escrita
+            PrintWriter out = new PrintWriter(new OutputStreamWriter(clientSocket.getOutputStream(), "UTF-8"), true);
+            // Usar InputStreamReader com UTF-8 para leitura
+            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), "UTF-8"))
+        ) {
             String inputLine = in.readLine();
             if (inputLine != null) {
                 LOG.debug("Request received: {}", inputLine);
@@ -80,7 +84,7 @@ public class Server {
                     QueryResultDTO response = handleRequest(request);
                     String jsonResponse = GSON.toJson(response);
                     LOG.debug("Response sent: {}", jsonResponse);
-                    out.println(jsonResponse);
+                    out.println(jsonResponse); // Enviar com UTF-8
                 } catch (Exception e) {
                     LOG.error("Error processing request: {}", e.getMessage(), e);
                     QueryResultDTO errorResponse = new QueryResultDTO();
