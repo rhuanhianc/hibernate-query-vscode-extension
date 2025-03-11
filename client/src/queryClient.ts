@@ -12,6 +12,7 @@ export class QueryClient {
     private serverPort: number;
     private serverHost: string;
     private hibernateVersion: string;
+    private responseTimeout: number;
     private logger: Logger;
 
     constructor(port?: number) {
@@ -23,6 +24,7 @@ export class QueryClient {
         this.serverPort = port || config.get('serverPort') || 8089;
         this.serverHost = config.get('serverHost') || '127.0.0.1';
         this.hibernateVersion = config.get('hibernateVersion') || '5.4.30.Final';
+        this.responseTimeout = config.get('responseTimeout') || 60000; // 60 seconds default
 
         this.connect();
     }
@@ -89,30 +91,41 @@ export class QueryClient {
                 throw new Error(`Not connected to the server. Check if the Java server is running at ${this.serverHost}:${this.serverPort}.`);
             }
         }
-
+    
         return new Promise((resolve, reject) => {
             this.logger.info(`Sending request: ${JSON.stringify(request)}`);
             this.client.write(JSON.stringify(request) + '\n');
-
-            // Set a timeout for the response
+    
+            let buffer = '';
             const timeout = setTimeout(() => {
                 this.client.removeAllListeners('data');
                 reject(new Error('Timeout: The server did not respond in a timely manner'));
-            }, 30000); // 30 seconds timeout
-
-            this.client.once('data', (data: { toString: () => string }) => {
-                clearTimeout(timeout); // Clear timeout when response is received
-                try {
-                    const response = JSON.parse(data.toString());
-                    this.logger.info(`Response received: ${JSON.stringify(response)}`);
-                    resolve(response);
-                } catch (e: any) {
-                    reject(new Error(`Error processing response: ${e.message}`));
+            }, this.responseTimeout);
+    
+            const onData = (data: Buffer) => {
+                buffer += data.toString();
+                const lines = buffer.split('\n');
+                
+                // Processar apenas se houver uma linha completa
+                if (lines.length > 1) {
+                    clearTimeout(timeout);
+                    this.client.removeListener('data', onData); // Remover listener após processar
+                    try {
+                        const response = JSON.parse(lines[0]); // Primeira linha completa
+                        this.logger.info(`Response received: ${JSON.stringify(response)}`);
+                        resolve(response);
+                    } catch (e: any) {
+                        reject(new Error(`Error processing response: ${e.message}`));
+                    }
+                    buffer = lines.slice(1).join('\n'); // Guardar resto, se houver
                 }
-            });
-
+            };
+    
+            this.client.on('data', onData);
+    
             this.client.on('error', (err) => {
                 clearTimeout(timeout);
+                this.client.removeListener('data', onData);
                 this.logger.error(`Error sending request: ${err.message}`);
                 this.isConnected = false;
                 reject(err);
@@ -130,6 +143,10 @@ export class QueryClient {
 
     getHibernateVersion(): string {
         return this.hibernateVersion;
+    }
+
+    getResponseTimeout(): number {
+        return this.responseTimeout;
     }
 
 
