@@ -46,14 +46,20 @@ export class QueryService {
     public normalizeQuery(query: string): string {
         // Make the query parser more forgiving by normalizing keywords
         // This addresses the issue where "From" vs "FROM" causes errors
-        const keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER',
-            'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET', 'AND', 'OR'];
+        const keywords = [
+            'SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER',
+            'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET', 'AND', 'OR',
+            'ON', 'USING', 'BETWEEN', 'LIKE', 'IN', 'EXISTS', 'NOT', 'IS NULL', 'IS NOT NULL',
+            'AS', 'DISTINCT', 'ALL', 'UNION', 'INTERSECT', 'EXCEPT',
+            'ASC', 'DESC', 'WITH', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END'
+        ];
 
         let normalizedQuery = query;
 
         // Case-insensitive regex replacement for each keyword
         keywords.forEach(keyword => {
-            const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+            const escapedKeyword = keyword.replace(/\s+/g, '\\s+');
+            const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'gi'); // Usando 'gi' para flags globais e case-insensitive
             normalizedQuery = normalizedQuery.replace(regex, keyword);
         });
 
@@ -145,7 +151,7 @@ export class QueryService {
 
         // 4. Process the query line by line to apply indentation
         const lines = formattedQuery.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-        const indentedLines: any[] = [];
+        const indentedLines: string[] = [];
 
         lines.forEach(line => {
             if (line.match(/^(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING|UNION|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH)/i)) {
