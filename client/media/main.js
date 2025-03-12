@@ -329,16 +329,18 @@
     
     // Detect parameters from query
     function detectQueryParams(query) {
-        if (!query) return [];
+        if (!query || typeof query !== 'string') return [];
         
-        // Detect both named parameters (:name) and positional parameters (?1)
-        const paramRegex = /(?::([a-zA-Z][a-zA-Z0-9]*)|[\?]([0-9]+))/g;
+        const paramRegex = /(?::([a-zA-Z][a-zA-Z0-9_]*)|\?(?:([0-9]+))?)/g;
         const params = [];
-        let match;
+        let positionalCount = 0;
         
+        let match;
         while ((match = paramRegex.exec(query)) !== null) {
-            // match[1] for named params, match[2] for positional params
-            const paramName = match[1] || match[2];
+            const paramName = match[1] 
+                ? match[1] 
+                : (match[2] ? `?${match[2]}` : `?${++positionalCount}`);
+            
             if (!params.includes(paramName)) {
                 params.push(paramName);
             }
@@ -346,7 +348,6 @@
         
         return params;
     }
-    
     function updateParamsUI() {
         const container = document.getElementById('params-container');
         container.innerHTML = '';
