@@ -7,7 +7,7 @@
 
 Test and debug JPQL/HQL and SQL queries directly in VS Code, with full Hibernate support!
 
-<img src="https://github.com/rhuanhianc/hibernate-query-vscode-extension/blob/main/exemple.gif?raw=true" width="800">
+![exemple](exemple.gif)
 
 ## 📋 Overview
 
