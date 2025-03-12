@@ -1,7 +1,9 @@
 import * as net from 'net';
 import * as vscode from 'vscode';
 import { Logger } from './utils/logger';
+import { TelemetryService } from './services/telemetryService';
 
+let telemetryService: TelemetryService = TelemetryService.getInstance();
 export class QueryClient {
     private client: net.Socket;
     private isConnected: boolean = false;
@@ -93,6 +95,7 @@ export class QueryClient {
         }
     
         return new Promise((resolve, reject) => {
+            telemetryService.sendQueryExecutedEvent(false);
             this.logger.info(`Sending request: ${JSON.stringify(request)}`);
             this.client.write(JSON.stringify(request) + '\n');
     
