@@ -196,7 +196,6 @@ public class QueryExecutor {
      * @param value O valor a ser convertido
      * @return O valor convertido
      */
-    @SuppressWarnings("unchecked")
     private static Object convertParameterValue(Object value) {
         if (value == null) {
             return null;
