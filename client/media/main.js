@@ -379,6 +379,8 @@
             historyList.innerHTML = '<div class="list-item">No queries in history</div>';
             return;
         }
+
+        historyList.style.maxHeight = '700px';
         
         history.forEach(item => {
             // Check item format (can be string or object)
@@ -492,7 +494,9 @@
             favoriteQueriesList.innerHTML = '<div class="favorite-query">No favorite queries. Save queries by clicking "Save as Favorite".</div>';
             return;
         }
-        
+
+        favoritesList.style.maxHeight = '700px';
+
         // Update both UI components with favorites
         Object.entries(favorites).forEach(([name, data]) => {
             // For the favorites tab
@@ -608,6 +612,7 @@
             return;
         }
         
+        container.style.maxHeight = '700px';
         Object.entries(paramSets).forEach(([name, params]) => {
             const item = document.createElement('div');
             item.className = 'list-item';
@@ -917,6 +922,9 @@
                         columns: message.results.columns,
                         rows: message.results.rows
                     }, 1);
+
+                     // Recarregar histórico após execução bem-sucedida da consulta
+                    vscode.postMessage({ command: 'loadHistory' });
                 
                 break;
                 
@@ -940,6 +948,9 @@
                         <pre class="code" style="font-size: 11px;">${message.stack || ''}</pre>
                     </div>
                 `;
+
+                 // Recarregar histórico após execução bem-sucedida da consulta
+                vscode.postMessage({ command: 'loadHistory' });
                 break;
                 
             case 'queryStatus':
