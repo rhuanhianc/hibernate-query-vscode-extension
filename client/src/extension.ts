@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as net from 'net';
 import { Logger } from './utils/logger';
 import { TelemetryService } from './services/telemetryService';
+import { QueryUtils } from './utils/queryUtils';
 
 let javaProcess: ChildProcess | null = null;
 let sidebarProvider: SidebarProvider | null = null;
@@ -13,6 +14,7 @@ let logger: Logger;
 let telemetryService: TelemetryService;
 let configuredPort: number;
 let actualPort: number;
+let queryUtils: QueryUtils;
 
 /**
  * Checks if a port is available
@@ -76,6 +78,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize telemetry
     telemetryService = TelemetryService.getInstance();
     telemetryService.setExtensionContext(context);
+
+    queryUtils = new QueryUtils();
 
     context.subscriptions.push(
         vscode.commands.registerCommand('hibernate-query-tester.showLogs', () => {
@@ -191,7 +195,7 @@ export async function activate(context: vscode.ExtensionContext) {
             if (text.trim().toUpperCase().match(/^(SELECT|UPDATE|DELETE|INSERT|WITH|FROM)/)) {
                 return {
                     query: text.trim(),
-                    isNative: determineIfNative(text.trim())
+                    isNative: queryUtils.determineIfNative(text.trim())
                 };
             }
 
@@ -200,344 +204,8 @@ export async function activate(context: vscode.ExtensionContext) {
                 .replace(/\/\/.*$/gm, '')
                 .replace(/\/\*[\s\S]*?\*\//g, '');
 
-            // Try multiple extraction methods in sequence for robustness
-
-            // Method 1: Simple regex-based extraction
-            const simpleExtraction = simpleExtractor(codeWithoutComments);
-            if (simpleExtraction.success) {
-                return {
-                    query: simpleExtraction.query,
-                    isNative: simpleExtraction.isNative
-                };
-            }
-
-            // Method 2: Pattern-based extraction for specific cases
-            const patternExtraction = patternExtractor(codeWithoutComments);
-            if (patternExtraction.success) {
-                return {
-                    query: patternExtraction.query,
-                    isNative: patternExtraction.isNative
-                };
-            }
-
-            // Method 3: General-purpose extraction with state tracking
-            const stateExtraction = stateBasedExtractor(codeWithoutComments);
-            if (stateExtraction.success) {
-                return {
-                    query: stateExtraction.query,
-                    isNative: stateExtraction.isNative
-                };
-            }
-
-            // Fallback: If no extraction method worked, return the original text
-            return {
-                query: text.trim(),
-                isNative: determineIfNative(text.trim())
-            };
+            return queryUtils.extractQueryFromContent(codeWithoutComments, false);
         };
-
-        /**
-         * Simple regex-based extractor for common query patterns
-         */
-        function simpleExtractor(text: string): {
-            success: boolean,
-            query: string,
-            isNative: boolean
-        } {
-            // For native queries with simple structure
-            if (text.includes(".createNativeQuery")) {
-                const nativeQueryRegex = /\.createNativeQuery\s*\(\s*"([^"]+)"/;
-                const match = text.match(nativeQueryRegex);
-
-                if (match) {
-                    return {
-                        success: true,
-                        query: match[1],
-                        isNative: true
-                    };
-                }
-
-                // Try with concatenated strings
-                const concatRegex = /\.createNativeQuery\s*\(\s*((?:"[^"]*"(?:\s*\+\s*"[^"]*")*)|(?:'[^']*'(?:\s*\+\s*'[^']*')*))/;
-                const concatMatch = text.match(concatRegex);
-
-                if (concatMatch) {
-                    // Process concatenated strings
-                    const rawQueryString = concatMatch[1];
-                    const extractedQuery = rawQueryString
-                        .replace(/"\s*\+\s*"/g, '') // Remove concatenation
-                        .replace(/^"|"$/g, '');     // Remove outer quotes
-
-                    return {
-                        success: true,
-                        query: extractedQuery,
-                        isNative: true
-                    };
-                }
-            }
-
-            // For JPQL queries
-            if (text.includes(".createQuery")) {
-                const jpqlQueryRegex = /\.createQuery\s*\(\s*"([^"]+)"/;
-                const match = text.match(jpqlQueryRegex);
-
-                if (match) {
-                    return {
-                        success: true,
-                        query: match[1],
-                        isNative: false
-                    };
-                }
-
-                // Try with concatenated strings
-                const concatRegex = /\.createQuery\s*\(\s*((?:"[^"]*"(?:\s*\+\s*"[^"]*")*)|(?:'[^']*'(?:\s*\+\s*'[^']*')*))/;
-                const concatMatch = text.match(concatRegex);
-
-                if (concatMatch) {
-                    // Process concatenated strings
-                    const rawQueryString = concatMatch[1];
-                    const extractedQuery = rawQueryString
-                        .replace(/"\s*\+\s*"/g, '') // Remove concatenation
-                        .replace(/^"|"$/g, '');     // Remove outer quotes
-
-                    return {
-                        success: true,
-                        query: extractedQuery,
-                        isNative: false
-                    };
-                }
-            }
-
-            return {
-                success: false,
-                query: '',
-                isNative: false
-            };
-        }
-
-        /**
-         * Pattern-based extractor for specific query patterns
-         */
-        function patternExtractor(text: string): {
-            success: boolean,
-            query: string,
-            isNative: boolean
-        } {
-            // Handle the common case with date format patterns
-            if ((text.includes("'YYYY'") || text.includes("'yyyy'")) &&
-                (text.includes("to_char") || text.includes("TO_CHAR"))) {
-
-                // Native SQL with to_char and date format
-                let match;
-
-                // More specific pattern for to_char with 'YYYY'
-                const toCharPattern = /select\s+[^;]+to_char\([^,]+,\s*'[^']*(?:YYYY|yyyy)[^']*'\)[^;]*;/i;
-                match = text.match(toCharPattern);
-
-                if (match) {
-                    return {
-                        success: true,
-                        query: match[0],
-                        isNative: true
-                    };
-                }
-            }
-
-            // JPQL pattern with entity names in PascalCase
-            const jpqlPattern = /FROM\s+[A-Z][a-zA-Z0-9]*\s+[a-z]\s+WHERE\s+[a-z]\.[a-zA-Z0-9.]+\s*=\s*:[a-zA-Z0-9_]+/i;
-            const jpqlMatch = text.match(jpqlPattern);
-
-            if (jpqlMatch) {
-                return {
-                    success: true,
-                    query: jpqlMatch[0],
-                    isNative: false
-                };
-            }
-
-            return {
-                success: false,
-                query: '',
-                isNative: false
-            };
-        }
-
-        /**
-         * State-based extractor that handles complex cases
-         */
-        function stateBasedExtractor(text: string): {
-            success: boolean,
-            query: string,
-            isNative: boolean
-        } {
-            let isNative = false;
-            let startIndex = -1;
-
-            // Find the query creation call
-            if (text.includes(".createNativeQuery")) {
-                startIndex = text.indexOf(".createNativeQuery");
-                isNative = true;
-            } else if (text.includes(".createQuery")) {
-                startIndex = text.indexOf(".createQuery");
-                isNative = false;
-            } else {
-                return {
-                    success: false,
-                    query: '',
-                    isNative: false
-                };
-            }
-
-            // Find opening parenthesis
-            const openParenIndex = text.indexOf("(", startIndex);
-            if (openParenIndex === -1) {
-                return {
-                    success: false,
-                    query: '',
-                    isNative: isNative
-                };
-            }
-
-            // Determine quote character used (single or double)
-            let quoteChar = '';
-            let firstQuoteIndex = -1;
-
-            const singleQuoteIndex = text.indexOf("'", openParenIndex);
-            const doubleQuoteIndex = text.indexOf('"', openParenIndex);
-
-            if (singleQuoteIndex !== -1 && (doubleQuoteIndex === -1 || singleQuoteIndex < doubleQuoteIndex)) {
-                quoteChar = "'";
-                firstQuoteIndex = singleQuoteIndex;
-            } else if (doubleQuoteIndex !== -1) {
-                quoteChar = '"';
-                firstQuoteIndex = doubleQuoteIndex;
-            } else {
-                return {
-                    success: false,
-                    query: '',
-                    isNative: isNative
-                };
-            }
-
-            // Extract query content with state tracking
-            let queryContent = "";
-            let i = firstQuoteIndex + 1;
-            let insideQuery = true;
-
-            while (i < text.length && insideQuery) {
-                // Check for end quote that's not escaped
-                if (text[i] === quoteChar && text[i - 1] !== '\\') {
-                    // Check if this is followed by concatenation
-                    const nextNonSpace = text.substring(i + 1).trim();
-                    if (nextNonSpace.startsWith("+")) {
-                        // Skip to the next quote
-                        const nextQuoteIndex = text.indexOf(quoteChar, i + 1);
-                        if (nextQuoteIndex !== -1) {
-                            i = nextQuoteIndex + 1;
-                            continue;
-                        }
-                    }
-                    insideQuery = false;
-                    break;
-                }
-
-                queryContent += text[i];
-                i++;
-            }
-
-            if (queryContent) {
-                // Post-process the query content
-                // Fix date format patterns if this is a native query
-                if (isNative) {
-                    // Handle to_char with date format
-                    queryContent = queryContent.replace(/to_char\s*\([^,]+,\s*'([^']+)(?!')/gi,
-                        (match, format) => `to_char(${match.substring(8, match.indexOf(','))}, '${format}'`);
-
-                    // Fix unclosed quotes in date patterns
-                    if (queryContent.includes("'YYYY") && !queryContent.includes("'YYYY'")) {
-                        queryContent = queryContent.replace(/'YYYY(?!\s*')/g, "'YYYY'");
-                    }
-                }
-
-                return {
-                    success: true,
-                    query: queryContent,
-                    isNative: isNative
-                };
-            }
-
-            return {
-                success: false,
-                query: '',
-                isNative: isNative
-            };
-        }
-
-        /**
-         * Helper function to determine if a query is native SQL or JPQL
-         * Uses a scoring system based on characteristic patterns
-         * 
-         * @param query - The query text to analyze
-         * @returns boolean - True if the query is likely native SQL, false if likely JPQL
-         */
-        function determineIfNative(query: string): boolean {
-            // JPQL indicators
-            const jpqlIndicators = [
-                /JOIN\s+FETCH/i,                  // JOIN FETCH is specific to JPQL
-                /\bMEMBER\s+OF\b/i,               // MEMBER OF is specific to JPQL
-                /\bIS\s+EMPTY\b/i,                // IS EMPTY is specific to JPQL
-                /\bNEW\s+[a-zA-Z0-9_.]+\s*\(/i,   // NEW constructor in JPQL
-                /\bENTRY\s*\(/i,                  // ENTRY() is a JPQL function
-                /\bFROM\s+[A-Z][a-zA-Z0-9]*\b/i,  // Entity names in PascalCase
-                /\.[a-zA-Z][a-zA-Z0-9]*\b/i       // Property access with dot notation
-            ];
-
-            // Native SQL indicators
-            const nativeSqlIndicators = [
-                /CREATE\s+(?:TEMP\s+)?TABLE/i,    // CREATE TABLE is native SQL
-                /ALTER\s+TABLE/i,                 // ALTER TABLE is native SQL
-                /DROP\s+TABLE/i,                  // DROP TABLE is native SQL
-                /WITH\s+[a-zA-Z0-9_]+\s+AS\s+\(/i, // CTEs are common in native SQL
-                /\bROWNUM\b/i,                    // ROWNUM is Oracle SQL
-                /\bDUAL\b/i,                      // DUAL is Oracle SQL
-                /\b[a-z_]+\.[a-z_]+\.[a-z_]+\b/i, // Schema references
-                /\b[a-z_]+\.[a-z_]+\b/i,          // Table references with schema 
-                /to_char\s*\(/i,                  // Oracle to_char function
-                /\b[a-z_]+_[a-z_]+\b/i            // Snake case table/column names
-            ];
-
-            let jpqlScore = 0;
-            let nativeScore = 0;
-
-            // Check JPQL indicators
-            for (const pattern of jpqlIndicators) {
-                if (pattern.test(query)) {
-                    jpqlScore += 2;
-                }
-            }
-
-            // Check native SQL indicators
-            for (const pattern of nativeSqlIndicators) {
-                if (pattern.test(query)) {
-                    nativeScore += 2;
-                }
-            }
-
-            // Additional checks
-            // Check for underscores in names (SQL convention)
-            if (query.includes('_')) {
-                nativeScore += 1;
-            }
-
-            // Check for presence of JPA entities (with PascalCase)
-            const entityJpaPattern = /\b[A-Z][a-zA-Z0-9]*\b(?!\s*\.)/g;
-            const entityMatches = query.match(entityJpaPattern) || [];
-            if (entityMatches.length > 0) {
-                jpqlScore += 2;
-            }
-
-            return nativeScore >= jpqlScore;
-        }
 
         // Command to test a selected query
         context.subscriptions.push(
