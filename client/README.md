@@ -7,7 +7,7 @@
 
 Test and debug JPQL/HQL and SQL queries directly in VS Code, with full Hibernate support!
 
-![exemple](../exemple.gif)
+![exemple](https://github.com/rhuanhianc/hibernate-query-vscode-extension/blob/main/exemple_low.gif?raw=true)
 
 ## 📋 Overview
 
@@ -213,6 +213,13 @@ WHERE p.price BETWEEN :minPrice AND :maxPrice
 3. Enable project scanning if entities are in the current project
 
 ## Release Notes
+
+### 0.2.3
+
+- Improved handling of SQL and JPQL queries in integration tests
+- Improve query normalization to include more keywords and improve query detection
+- Fix query parameter detection to accept only strings and improve positioning
+- Layout fix and history update fix
 
 ### 0.2.2
 

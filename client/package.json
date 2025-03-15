@@ -2,7 +2,7 @@
     "name": "hibernate-query-tester",
     "displayName": "Hibernate Query Tester",
     "description": "Test JPQL/HQL and native SQL queries with Hibernate",
-    "version": "0.2.2",
+    "version": "0.2.4",
     "publisher": "RhuanHianc",
     "icon": "images/icon.png",
     "engines": {
@@ -209,8 +209,12 @@
         "vscode-languageclient": "^8.0.0"
     },
     "devDependencies": {
+        "@types/jest": "^29.5.0",
         "@types/node": "^22.13.10",
         "@types/vscode": "^1.70.0",
+        "jest": "^29.5.0",
+        "jsdom": "^26.0.0",
+        "ts-jest": "^29.1.0",
         "ts-loader": "^9.5.2",
         "typescript": "^5.3.3",
         "webpack": "^5.98.0",
@@ -224,7 +228,8 @@
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "lint": "eslint src --ext ts",
-        "package": "vsce package"
+        "package": "vsce package",
+        "test": "jest"
     },
     "author": {
         "name": "Rhuan Hianc",
@@ -239,6 +244,7 @@
         "url": "https://github.com/rhuanhianc/hibernate-query-vscode-extension/issues"
     },
     "changelog": {
+        "0.2.3": "Improved handling of SQL and JPQL queries in integration tests, Improve query normalization to include more keywords and improve query detection, Fix query parameter detection to accept only strings and improve positioning, Layout fix and history update fix",
         "0.2.1": "Fixes modals for saving and improvements when loading queries with command or scan, updated icon and package.json",
         "0.2.0": "Added support for Persistence.xml, improved entity scanning and add support for port dynamic",
         "0.1.5": "Added log level configuration and fixed some bugs",
