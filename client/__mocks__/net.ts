@@ -1,6 +1,3 @@
-// Mock para o módulo net
-
-// Criando uma classe Socket mock que imita a interface do Socket do Node.js
 class Socket {
     private listeners: Record<string, Function[]> = {
       'data': [],

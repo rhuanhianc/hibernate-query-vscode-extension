@@ -1,5 +1,3 @@
-// __mocks__/services/telemetryService.ts
-
 export class TelemetryService {
     private static instance: TelemetryService;
   
