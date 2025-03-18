@@ -1,5 +1,3 @@
-// __mocks__/utils/logger.ts
-
 export class Logger {
     private static instance: Logger;
   
